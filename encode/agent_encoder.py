@@ -30,6 +30,15 @@ Based on:
 - Quality-Guided Slot Attention (QASA, 2025)
 - Original Slot Attention (Locatello et al., 2020)
 """
+
+# here my effort is trying to exclude agentencoder out of modality (may take pedesstrian or behavior from this as well) 
+# then make router from it,
+
+# for raw dataset, I use hiearrchy_encoder is enough.
+
+# let separate thing like this
+# and let see what we lack from this need of agent encoder
+# interaction model, weather, lane change
 @dataclass
 class SlotRoutingOutput:
     slots: torch.Tensor # [B, K, D] - refined slots

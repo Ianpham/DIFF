@@ -14,7 +14,7 @@ from typing import List, Dict,Optional
 # Output: Shared scene context for all agents
 # 
 @dataclass
-class BEVConfig:
+class BEVConfig: # this is from BEV HD map, if segmentation do their job, we need also make it BEV
     """ configuration for encoder which bev provided in HDMAP and annotation, not segmentation from perception (that task will be later)"""
     hidden_size: 768
     patch_size: 4
@@ -299,32 +299,6 @@ class MultiCameraEncoder(nn.Module):
         return fused_features
 
 
-# class ImgCNN(nn.Module):
-#     """
-#     Image encoder using CNN.
-#     Pretrained options: ResNet-50, EfficientNet from torchvision
-#     Can freeze early layers and fine-tune later layers.
-#     """
-#     def __init__(self, in_channels=3, hidden_size=768, patch_size=4):
-#         super().__init__()
-#         self.patch_size = patch_size
-#         # Consider using pretrained ResNet/EfficientNet backbone
-#         self.proj = nn.Conv2d(in_channels, hidden_size, kernel_size=patch_size, stride=patch_size)
-#         self.modality_token = nn.Parameter(torch.zeros(1, 1, hidden_size))
-        
-#     def forward(self, x):
-#         """
-#         Args:
-#             x: (N, 3, H, W) - RGB image
-#         Returns:
-#             out: (N, T_img, hidden_size)
-#         """
-#         N = x.shape[0]
-#         x = self.proj(x)  # (N, hidden_size, H//patch_size, W//patch_size)
-#         x = x.flatten(2).transpose(1, 2)  # (N, num_patches, hidden_size)
-#         modality_token = self.modality_token.expand(N, -1, -1)
-#         x = torch.cat([modality_token, x], dim=1)  # (N, T_img, hidden_size)
-#         return x
 
 
 class BEVEncoder(nn.Module):
@@ -474,7 +448,7 @@ class TrafficControlEncoder(nn.Module):
 class OcclusionEncoder(nn.Module):
     """
     Occlusion map encoder - indicates uncertain/hidden regions.
-    Important for safety-critical scenarios.
+    Important for safety-critical scenarios. # here latter we will do Surround Occ, this help use to one more step close to understand scene from occlusion view
     """
     def __init__(self, in_channels=5, hidden_size=768):
         super().__init__()
@@ -495,11 +469,11 @@ class OcclusionEncoder(nn.Module):
         return x
 
 
-# 
+
 # AGENT-SPECIFIC ENCODERS (Per-agent features)
 # These encode AGENT properties: kinematics, actions, behaviors
 # NOT scene context - that comes from modality encoders above
-# 
+
 
 class ActionEncoder(nn.Module):
     """
@@ -559,7 +533,7 @@ class EgoStateEncoder(nn.Module):
         x = self.mlp(x).unsqueeze(1)  # (N, 1, hidden_size)
         return x
 
-
+# mean that here we use MoE for select right intent and behavior for planning,
 class BehaviorEncoder(nn.Module):
     """
     Agent behavior encoder (lane keeping, following, changing, etc.).
@@ -660,9 +634,9 @@ class GoalIntentEncoder(nn.Module):
         return x
 
 
-# 
+
 # EMBEDDERS (Diffusion-specific)
-# 
+
 
 class TimestepEmbedder(nn.Module):
     """
@@ -922,7 +896,7 @@ class EncoderOutput:
 # 
 # MULTI-LEVEL AGENT ENCODER
 # 
-
+# working as router for agent, not scene as hierarchical encoder gate
 class AgentEncoder(nn.Module):
     """
     CRITICAL: This is SEPARATE from modality encoders

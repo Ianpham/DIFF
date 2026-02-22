@@ -539,6 +539,101 @@ class ModalityEncoder(nn.Module):
         return self.output_tokens_per_modality * num_modalities
 
 
+class ModalityEncoderAdapter(nn.Module):
+    """
+    Wraps  ModalityEncoder to work with TransDiffuserDit
+
+    What it does:
+    - Extract scene modalities from adapted_batch
+    - Call ModalityEncoder with proper format
+    - Return scene features compatibale with Agent Encoder
+    """
+    
+    def __init__(
+            self,
+            modality_embedders: nn.ModuleDict,
+            modality_config: Dict[str, int],
+            hidden_size: int = 768,
+            num_heads: int = 12,
+            use_gating: bool = True,
+            gate_type: str = 'soft',
+            output_token_per_modality: int = 16,
+    ):
+        super().__init__()
+        self.hidden_size = hidden_size
+
+        # core modality encoder
+        self.modality_encoder = ModalityEncoder(
+            modality_embedders=modality_embedders,
+            modality_config= modality_config,
+            hidden_size= hidden_size,
+            num_heads= num_heads,
+            dropout= 0.1,
+            parallel=True,
+            use_gating=use_gating,
+            gate_type=gate_type,
+            output_tokens_per_modality=output_token_per_modality
+        )
+
+        # mapping from adapted_batch keys to modality names
+        # customize this based on your dataset
+        self.batch_key_mapping = {
+            'lidar_bev' : 'lidar',
+            'camera_bev': 'camera',
+            'bev_labels': 'bev'
+        }
+
+    def forward(
+            self,
+            adapted_batch: Dict[str, torch.Tensor],
+            return_gate_info: bool = False
+    )-> Tuple[torch.tensor, Optional[ModalityGateInfo]]:
+        """
+        Encode scene modalities from adapted batch.
+        
+        Args:
+            adapted_batch: Output from adapter.adapt_batch()
+                Expected keys: 'lidar_bev', 'camera_bev', 'bev_labels'
+            return_gate_info: Whether to return gating decisions
+            
+        Returns:
+            scene_features: [B, T_scene, D] - Scene context tokens
+            gate_info: Optional gating information
+        
+        """
+
+        # extract scene modalities
+        scene_modalities = self._extract_scene_modalities(adapted_batch)
+
+        # encode with gating
+        scene_features, gate_info = self.modality_encoder.encode_modalities(
+            scene_modalities, 
+            return_gate_info=return_gate_info
+        )
+
+        return scene_features, gate_info
+    
+
+    def _extract_scene_modalities(
+            self,
+            adapted_batch: Dict[str, torch.Tensor]
+    )-> Dict[str, torch.Tensor]:
+        """
+        Extract scene modalities from adapted batch.
+        
+        Maps dataset-specific keys to modality encoder expected format.
+        """
+        scene_modalities = {}
+
+        for batch_key, modality_name in self.batch_key_mapping.items():
+            if batch_key in adapted_batch:
+                scene_modalities[modality_name] = adapted_batch[batch_key]
+
+            return scene_modalities
+        
+    def get_output_token_count(self) -> int:
+        """Fixed output token count from modality encoder."""
+        return self.modality_encoder.get_output_token_count()      
 # ============================================================================
 # INTEGRATION HELPER
 # ============================================================================

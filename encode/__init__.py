@@ -1,6 +1,6 @@
 """Encoding module for transdiffuser."""
 
-from .hierachy_encoder import (
+from .raw_router import (
     ModalityEncoder,
     create_improved_modality_encoder,
     ModalityGateInfo,
