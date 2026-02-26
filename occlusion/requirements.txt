@@ -1,0 +1,36 @@
+# Core
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24
+pillow>=10.0
+
+# 3D Detection & Occupancy (mmdet3d ecosystem)
+# Install mmdet3d separately: mim install mmdet3d>=1.1
+mmcv>=2.0.0
+mmdet>=3.0.0
+mmengine>=0.7.0
+
+# Sparse Convolution
+# Install matching your CUDA version:
+#   pip install spconv-cu118  (for CUDA 11.8)
+#   pip install spconv-cu120  (for CUDA 12.0)
+
+# DFA3D (3D Deformable Attention CUDA ops)
+# Install from source:
+#   git clone https://github.com/IDEA-Research/3D-deformable-attention
+#   cd 3D-deformable-attention && python setup.py install
+
+# NavSim toolkit
+# git clone https://github.com/autonomousvision/navsim
+# cd navsim && pip install -e .
+
+# Training utilities
+pytorch-lightning>=2.0
+wandb>=0.15
+einops>=0.7.0
+scipy>=1.11
+tqdm>=4.65
+
+# Visualization
+matplotlib>=3.7
+open3d>=0.17  # For 3D Gaussian visualization
