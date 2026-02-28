@@ -1,8 +1,9 @@
 """GaussianOccEncoder: Iterative refinement of 3D Gaussians via sparse conv + 3D deformable attention."""
 import torch, torch.nn as nn
 from typing import Tuple
-from .deformable_attn_3d import DeformableAttention3D, SparseConv3DBlock
-import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+from deformable_attn_3d import DeformableAttention3D, SparseConv3DBlock, GaussianRefinementBlock
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.gaussian_utils import GaussianParameterHead
 
 class GaussianRefinementBlock(nn.Module):
@@ -30,9 +31,9 @@ class GaussianOccEncoder(nn.Module):
         super().__init__()
         self.blocks = nn.ModuleList([GaussianRefinementBlock(embed_dims, num_heads, num_levels, num_points, num_3d_ref_points, num_classes, dropout) for _ in range(num_blocks)])
 
-    def forward(self, query, gaussian_props, ms_feats, depth_maps, lidar2img, img_shape):
+    def forward(self, query, gaussian_means, ms_feats, depth_maps, lidar2img, img_shape):
         intermediates = []
         for block in self.blocks:
-            query, gaussian_props = block(query, gaussian_props, ms_feats, depth_maps, lidar2img, img_shape)
-            intermediates.append(gaussian_props)
-        return query, gaussian_props, intermediates
+            query, gaussian_means = block(query, gaussian_means, ms_feats, depth_maps, lidar2img, img_shape)
+            intermediates.append(gaussian_means)
+        return query, gaussian_means, intermediates
