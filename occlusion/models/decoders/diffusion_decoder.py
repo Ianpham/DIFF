@@ -1,4 +1,6 @@
 """TransDiffuser DDPM denoising decoder with multi-modal cross-attention."""
+
+# where all thing put together
 import math, torch, torch.nn as nn, torch.nn.functional as F
 from typing import Dict, Tuple
 

@@ -1,7 +1,7 @@
 """GaussianOccEncoder: Iterative refinement of 3D Gaussians via sparse conv + 3D deformable attention."""
 import torch, torch.nn as nn
 from typing import Tuple
-from deformable_attn_3d import DeformableAttention3D, SparseConv3DBlock, GaussianRefinementBlock
+from models.encoders.deformable_attn_3d import DeformableAttention3D, SparseConv3DBlock
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.gaussian_utils import GaussianParameterHead

@@ -19,7 +19,7 @@ from .decoders.diffusion_decoder import (
     MotionEncoder,
 )
 from .losses.occ_loss import CombinedLoss
-
+from utils.depth_map import build_depth_maps_batch, create_multiscale_depth_maps
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.pooling import build_gaussian_pooling
@@ -219,9 +219,9 @@ class GaussianTransDiffuser(nn.Module):
             loss_weights=loss_weights,
         )
 
-    # ==============================================================
+    
     # Shared sub-forward helpers
-    # ==============================================================
+    
 
     def _run_gaussian_branch(
         self, batch: Dict[str, torch.Tensor],
@@ -245,12 +245,17 @@ class GaussianTransDiffuser(nn.Module):
         gaussian_props, gaussian_feats = self.gaussian_lifter(points)
 
         # Depth maps placeholder (in production: project LiDAR to camera depth maps)
-        depth_maps = torch.zeros(
-            images.shape[0], images.shape[1], 1,
-            ms_feats[0].shape[-2], ms_feats[0].shape[-1],
-            device=images.device,
+        # depth_maps = torch.zeros(
+        #     images.shape[0], images.shape[1], 1,
+        #     ms_feats[0].shape[-2], ms_feats[0].shape[-1],
+        #     device=images.device,
+        # )
+        depth_maps_full = build_depth_maps_batch(
+        points, lidar2img, img_shape,
+        num_bins=64, depth_range=(1.0, 60.0), mode="hard",
         )
-
+        fpn_shapes = [(f.shape[-2], f.shape[-1]) for f in ms_feats]
+        depth_maps = create_multiscale_depth_maps(depth_maps_full, fpn_shapes)
         # Iterative refinement
         gaussian_feats, gaussian_props, intermediates = self.gaussian_encoder(
             gaussian_feats, gaussian_props,
@@ -294,9 +299,9 @@ class GaussianTransDiffuser(nn.Module):
             motion_tokens,         # (B, 2, D)   action + ego concatenated
         ]
 
-    # ==============================================================
+    
     # Phase-specific forward passes
-    # ==============================================================
+    
 
     def forward_phase1(
         self, batch: Dict[str, torch.Tensor],
@@ -472,9 +477,9 @@ class GaussianTransDiffuser(nn.Module):
         best = trajectories[torch.arange(B, device=trajectories.device), best_idx]
         return best  # (B, T, 2)
 
-    # ==============================================================
+    
     # Utilities
-    # ==============================================================
+    
 
     def freeze_gaussian_branch(self):
         """Freeze GaussianFormer3D for Phase 2."""
