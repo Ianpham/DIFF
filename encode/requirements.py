@@ -321,7 +321,7 @@ class StandardRequirements:
         required={FeatureType.AGENT_STATE, FeatureType.AGENT_HISTORY},
         preferred={FeatureType.AGENT_NEARBY},
         min_agent_state_dim=7,
-        min_history_length=10,
+        min_history_length=4,
         needs_acceleration=True,
         needs_multi_agent=True,
         fallback_allowed=True,  # Can pad acceleration if missing

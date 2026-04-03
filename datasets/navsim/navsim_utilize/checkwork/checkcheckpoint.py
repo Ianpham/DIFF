@@ -18,11 +18,11 @@ print("-"*80)
 
 try:
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
-    print(f"✓ Successfully loaded checkpoint")
+    print(f"  Successfully loaded checkpoint")
     print(f"  File: {checkpoint_path}")
     print(f"  Size: {Path(checkpoint_path).stat().st_size / (1024*1024):.1f} MB")
 except Exception as e:
-    print(f"✗ FAILED to load: {e}")
+    print(f"  FAILED to load: {e}")
     exit(1)
 
 print(f"\n2. CHECKPOINT TYPE & STRUCTURE")
@@ -58,25 +58,25 @@ state_dict = None
 if isinstance(checkpoint, dict):
     if 'state_dict' in checkpoint:
         state_dict = checkpoint['state_dict']
-        print(f"✓ Found 'state_dict' key")
+        print(f"  Found 'state_dict' key")
     elif 'model' in checkpoint:
         state_dict = checkpoint['model']
-        print(f"✓ Found 'model' key")
+        print(f"  Found 'model' key")
     else:
         # Try to use the dict directly as state_dict
         if all(isinstance(v, torch.Tensor) for v in list(checkpoint.values())[:5]):
             state_dict = checkpoint
-            print(f"✓ Using checkpoint dict directly as state_dict")
+            print(f"  Using checkpoint dict directly as state_dict")
         else:
             print(f"⚠ Could not find standard state_dict format")
             print(f"  Available keys: {list(checkpoint.keys())[:5]}")
 
 elif isinstance(checkpoint, torch.nn.Module):
     state_dict = checkpoint.state_dict()
-    print(f"✓ Extracted state_dict from model")
+    print(f"  Extracted state_dict from model")
 
 if state_dict is None:
-    print(f"✗ Could not extract state_dict")
+    print(f"  Could not extract state_dict")
     exit(1)
 
 print(f"\n4. STATE DICT ANALYSIS")
@@ -147,9 +147,9 @@ if isinstance(state_dict, dict):
         # Check for NaN
         nan_count = sum(1 for v in weight_layers if torch.isnan(v.float()).any())
         if nan_count > 0:
-            print(f"✗ ERROR: {nan_count} layers contain NaN values!")
+            print(f"  ERROR: {nan_count} layers contain NaN values!")
         else:
-            print(f"✓ No NaN values detected")
+            print(f"  No NaN values detected")
 
 print(f"\n6. DIAGNOSIS")
 print("-"*80)
@@ -179,7 +179,7 @@ if issues:
     for issue in issues:
         print(f"  ⚠ {issue}")
 else:
-    print("✓ No obvious issues detected with checkpoint file")
+    print("  No obvious issues detected with checkpoint file")
 
 print(f"\n7. RECOMMENDATION")
 print("-"*80)

@@ -681,9 +681,9 @@ class VectorMapExtractor:
         return lane_curvatures, lane_lengths, lane_headings
 
 
-# ===========================================================================
+ 
 #  Batch Extraction
-# ===========================================================================
+ 
 
 def extract__vector_map_for_batch(
     extractor: VectorMapExtractor,
@@ -826,7 +826,7 @@ if __name__ == "__main__":
         feature_dim=16,  # Increased!
         max_crosswalks=10,
     )
-    print("✓  VectorMapExtractor initialized")
+    print("   VectorMapExtractor initialized")
     
     # Load dataset
     from navsim_utilize.navsimdataset import NavsimDataset
@@ -839,7 +839,7 @@ if __name__ == "__main__":
         use_cache=False,
         map_root=map_root
     )
-    print(f"✓ Dataset loaded: {len(dataset)} samples")
+    print(f"  Dataset loaded: {len(dataset)} samples")
     
     # Get a scene
     scene = dataset.scene_loader.get_scene_from_token(dataset.scene_tokens[0])
@@ -857,7 +857,7 @@ if __name__ == "__main__":
         map_apis=map_apis,
     )
     
-    print(f"\n✓  vector map extracted!")
+    print(f"\n   vector map extracted!")
     print(f"\n{'='*70}")
     print("ALL FEATURES:")
     print(f"{'='*70}")
@@ -898,5 +898,5 @@ if __name__ == "__main__":
     print(f"  Max curvature: {vector_maps['lane_curvatures'][b].max().item():.3f} rad")
     
     print(f"\n{'='*70}")
-    print("✅  Vector Map Extraction Test PASSED!")
+    print("   Vector Map Extraction Test PASSED!")
     print(f"{'='*70}")

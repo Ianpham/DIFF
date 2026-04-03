@@ -23,9 +23,9 @@ def analyze_checkpoint(checkpoint_path):
     print("\nLoading checkpoint...")
     try:
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
-        print("✓ Checkpoint loaded")
+        print("  Checkpoint loaded")
     except Exception as e:
-        print(f"✗ Failed to load: {e}")
+        print(f"  Failed to load: {e}")
         return
     
     # Top-level structure
@@ -232,7 +232,7 @@ def main():
                 shape = tuple(state_dict[key].shape)
                 f.write(f"{key:80s} {str(shape)}\n")
         
-        print(f"✓ Saved {len(state_dict)} keys")
+        print(f"  Saved {len(state_dict)} keys")
 
 
 if __name__ == "__main__":

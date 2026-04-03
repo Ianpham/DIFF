@@ -31,7 +31,7 @@ def test_navsim_dataset():
     
     assert sample['agent_states'].shape == (1, 5)  # No acceleration
     
-    print("\n✓ NavsimDataset (no acceleration) test passed!")
+    print("\n  NavsimDataset (no acceleration) test passed!")
     
     # Now try WITH acceleration
     dataset2 = NavsimDataset(
@@ -50,7 +50,7 @@ def test_navsim_dataset():
     print(f"\nSample2 agent states shape: {sample2['agent_states'].shape}")
     assert sample2['agent_states'].shape == (1, 7)  # With acceleration
     
-    print("\n✓ NavsimDataset (with acceleration) test passed!")
+    print("\n  NavsimDataset (with acceleration) test passed!")
 
 if __name__ == "__main__":
     test_navsim_dataset()

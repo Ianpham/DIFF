@@ -71,11 +71,11 @@ def check_map_features(map_api, map_name, ego_point):
             count = len(objects)
             
             features[layer.name] = count
-            status = "✓" if count > 0 else "⚠️ (empty)"
+            status = " " if count > 0 else " (empty)"
             print(f"    {status} {layer.name}: {count} objects")
         except Exception as e:
             features[layer.name] = f"ERROR: {str(e)}"
-            print(f"    ✗ {layer.name}: {str(e)}")
+            print(f"      {layer.name}: {str(e)}")
     
     return features
 
@@ -90,12 +90,12 @@ def inspect_lane_details(map_api, map_name, ego_point):
     lanes = extract_objects_from_result(result)
     
     if not lanes or len(lanes) == 0:
-        print(f"\n  ⚠️  No lanes found at ego position for '{map_name}'")
+        print(f"\n    No lanes found at ego position for '{map_name}'")
         return None
     
     lane = lanes[0]
     
-    print(f"\n  📋 Sample Lane Attributes for '{map_name}':")
+    print(f"\n   Sample Lane Attributes for '{map_name}':")
     print(f"    Lane ID: {lane.id}")
     
     lane_info = {}
@@ -116,22 +116,22 @@ def inspect_lane_details(map_api, map_name, ego_point):
                 if attr == 'baseline_path':
                     path = value.discrete_path
                     lane_info[attr] = f"{len(path)} points"
-                    print(f"    ✓ {description}: {len(path)} points")
+                    print(f"      {description}: {len(path)} points")
                 elif attr == 'incoming_edges':
                     lane_info[attr] = len(value)
-                    print(f"    ✓ {description}: {len(value)} lanes")
+                    print(f"      {description}: {len(value)} lanes")
                 elif attr == 'outgoing_edges':
                     lane_info[attr] = len(value)
-                    print(f"    ✓ {description}: {len(value)} lanes")
+                    print(f"      {description}: {len(value)} lanes")
                 else:
                     lane_info[attr] = value
-                    print(f"    ✓ {description}: {value}")
+                    print(f"      {description}: {value}")
             else:
                 lane_info[attr] = None
-                print(f"    ⚠️  {description}: None")
+                print(f"      {description}: None")
         except Exception as e:
             lane_info[attr] = f"ERROR: {str(e)}"
-            print(f"    ✗ {description}: {str(e)}")
+            print(f"      {description}: {str(e)}")
     
     # Check methods
     methods_to_check = [
@@ -144,11 +144,11 @@ def inspect_lane_details(map_api, map_name, ego_point):
             if hasattr(lane, method):
                 value = getattr(lane, method)()
                 lane_info[method] = value
-                print(f"    ✓ {description}: {value}")
+                print(f"      {description}: {value}")
             else:
-                print(f"    ⚠️  {description}: Method not found")
+                print(f"      {description}: Method not found")
         except Exception as e:
-            print(f"    ✗ {description}: {str(e)}")
+            print(f"      {description}: {str(e)}")
     
     return lane_info
 
@@ -156,7 +156,7 @@ def test_actual_scene_extraction(scene_loader, map_api, map_name):
     """
     Test extraction using ACTUAL ego pose from a scene.
     """
-    print(f"\n  🧪 Testing extraction with REAL ego pose from scene...")
+    print(f"\n   Testing extraction with REAL ego pose from scene...")
     
     # Get a scene for this map
     for token in scene_loader.tokens[:20]:
@@ -189,48 +189,48 @@ def test_actual_scene_extraction(scene_loader, map_api, map_name):
                 lanes = extract_objects_from_result(result)
                 num_lanes = len(lanes)
                 
-                print(f"    ✓ Found {num_lanes} lanes within 50m of ego")
+                print(f"      Found {num_lanes} lanes within 50m of ego")
                 
                 if num_lanes > 0:
                     lane = lanes[0]
-                    print(f"    ✓ Sample lane ID: {lane.id}")
+                    print(f"      Sample lane ID: {lane.id}")
                     
                     # Check connectivity
                     incoming = lane.incoming_edges if hasattr(lane, 'incoming_edges') else []
                     outgoing = lane.outgoing_edges if hasattr(lane, 'outgoing_edges') else []
-                    print(f"    ✓ Connectivity: {len(incoming)} incoming, {len(outgoing)} outgoing")
+                    print(f"      Connectivity: {len(incoming)} incoming, {len(outgoing)} outgoing")
                     
                     # Check baseline path
                     if hasattr(lane, 'baseline_path'):
                         path = lane.baseline_path.discrete_path
-                        print(f"    ✓ Lane polyline: {len(path)} points")
+                        print(f"      Lane polyline: {len(path)} points")
                         
                         # Show first few points
                         if len(path) > 0:
-                            print(f"    ✓ First point: ({path[0][0]:.2f}, {path[0][1]:.2f})")
+                            print(f"      First point: ({path[0][0]:.2f}, {path[0][1]:.2f})")
                     
                     # Check speed limit
                     if hasattr(lane, 'speed_limit_mps') and lane.speed_limit_mps:
-                        print(f"    ✓ Speed limit: {lane.speed_limit_mps:.1f} m/s")
+                        print(f"      Speed limit: {lane.speed_limit_mps:.1f} m/s")
                     
                     # Check lane type
                     if hasattr(lane, 'type'):
-                        print(f"    ✓ Lane type: {lane.type}")
+                        print(f"      Lane type: {lane.type}")
                     
                     return True
                 else:
-                    print(f"    ⚠️  No lanes found within 50m")
+                    print(f"      No lanes found within 50m")
                     return False
                     
             except Exception as e:
-                print(f"    ✗ Extraction failed: {str(e)}")
+                print(f"      Extraction failed: {str(e)}")
                 import traceback
                 traceback.print_exc()
                 return False
             
             break
     
-    print(f"    ⚠️  No scenes found for map '{map_name}'")
+    print(f"      No scenes found for map '{map_name}'")
     return False
 
 def check_mini_maps_comprehensive():
@@ -241,11 +241,11 @@ def check_mini_maps_comprehensive():
     
     # Verify paths exist
     if not data_root.exists():
-        print(f"❌ ERROR: OPENSCENE_DATA_ROOT not found: {data_root}")
+        print(f" ERROR: OPENSCENE_DATA_ROOT not found: {data_root}")
         return None
     
     if not maps_root.exists():
-        print(f"❌ ERROR: NUPLAN_MAPS_ROOT not found: {maps_root}")
+        print(f" ERROR: NUPLAN_MAPS_ROOT not found: {maps_root}")
         return None
     
     # Minimal sensor config
@@ -276,9 +276,9 @@ def check_mini_maps_comprehensive():
             scene_filter=scene_filter,
             sensor_config=sensor_config
         )
-        print(f"✓ Loaded {len(scene_loader.tokens)} scenes")
+        print(f"  Loaded {len(scene_loader.tokens)} scenes")
     except Exception as e:
-        print(f"❌ Failed to load scenes: {str(e)}")
+        print(f" Failed to load scenes: {str(e)}")
         return None
     
     # Step 2: Check map usage in scenes
@@ -302,7 +302,7 @@ def check_mini_maps_comprehensive():
         if (i + 1) % 10 == 0:
             print(f"  Processed {i+1}/{num_scenes_to_check} scenes...")
     
-    print(f"\n✓ Analyzed {num_scenes_to_check} scenes")
+    print(f"\n  Analyzed {num_scenes_to_check} scenes")
     print(f"\nMap distribution:")
     for map_name, count in map_counter.most_common():
         print(f"  • {map_name}: {count} scenes ({count/num_scenes_to_check*100:.1f}%)")
@@ -317,7 +317,7 @@ def check_mini_maps_comprehensive():
         if item.is_dir() and not item.name.startswith('.'):
             has_structure = (item / 'map.json').exists() or list(item.glob('**/map.json'))
             available_maps[item.name] = has_structure
-            status = "✓" if has_structure else "⚠️ (may work)"
+            status = " " if has_structure else " (may work)"
             print(f"  {status} {item.name}")
     
     # Step 4: Get ego position from first scene
@@ -338,7 +338,7 @@ def check_mini_maps_comprehensive():
         ego_x, ego_y = 0.0, 0.0
     
     test_ego_point = Point2D(ego_x, ego_y)
-    print(f"✓ Using ego position: ({ego_x:.2f}, {ego_y:.2f})")
+    print(f"  Using ego position: ({ego_x:.2f}, {ego_y:.2f})")
     
     # Step 5: Check map API access and features
     print("\n[5/5] Testing map API access and extractable features...")
@@ -360,11 +360,11 @@ def check_mini_maps_comprehensive():
         converted_name = map_name
         if map_name == "las_vegas":
             converted_name = "us-nv-las-vegas-strip"
-            print(f"  ℹ️  Name conversion: '{map_name}' → '{converted_name}'")
+            print(f"   Name conversion: '{map_name}' → '{converted_name}'")
         
         # Check if available
         if converted_name not in available_maps:
-            print(f"  ✗ Map NOT FOUND in directory!")
+            print(f"    Map NOT FOUND in directory!")
             map_features_summary[map_name] = "NOT_AVAILABLE"
             extraction_test_results[map_name] = False
             continue
@@ -372,7 +372,7 @@ def check_mini_maps_comprehensive():
         # Try to load map API
         try:
             map_api = get_maps_api(str(maps_root), map_version, converted_name)
-            print(f"  ✓ Map API loaded successfully")
+            print(f"    Map API loaded successfully")
             map_api_cache[map_name] = map_api
             
             # Check available features
@@ -387,7 +387,7 @@ def check_mini_maps_comprehensive():
             extraction_test_results[map_name] = success
             
         except Exception as e:
-            print(f"  ✗ Failed: {str(e)}")
+            print(f"    Failed: {str(e)}")
             import traceback
             traceback.print_exc()
             map_features_summary[map_name] = f"ERROR: {str(e)}"
@@ -403,14 +403,14 @@ def check_mini_maps_comprehensive():
         missing_maps.remove("las_vegas")
     
     if missing_maps:
-        print("\n⚠️  WARNING: Missing maps:")
+        print("\n  WARNING: Missing maps:")
         for m in missing_maps:
             print(f"  • {m}")
     else:
-        print("\n✓ All required maps are available!")
+        print("\n  All required maps are available!")
     
     # Feature extractability
-    print("\n📊 Feature Extractability Summary:")
+    print("\n Feature Extractability Summary:")
     
     extractable_features = defaultdict(list)
     for map_name, features in map_features_summary.items():
@@ -419,11 +419,11 @@ def check_mini_maps_comprehensive():
             for layer, count in features.items():
                 if isinstance(count, int) and count > 0:
                     extractable_features[layer].append(map_name)
-                    print(f"    ✓ {layer}: {count} objects")
+                    print(f"      {layer}: {count} objects")
                 elif isinstance(count, int):
-                    print(f"    ⚠️  {layer}: empty")
+                    print(f"      {layer}: empty")
                 else:
-                    print(f"    ✗ {layer}: {count}")
+                    print(f"      {layer}: {count}")
     
     print("\n" + "=" * 80)
     print(" VECTOR MAP EXTRACTION READINESS")
@@ -436,26 +436,26 @@ def check_mini_maps_comprehensive():
     for layer in critical_layers:
         maps_with_layer = extractable_features.get(layer, [])
         if len(maps_with_layer) == len(used_maps):
-            print(f"  ✓ {layer}: Available in all maps")
+            print(f"    {layer}: Available in all maps")
         elif maps_with_layer:
-            print(f"  ⚠️  {layer}: Available in {len(maps_with_layer)}/{len(used_maps)} maps")
+            print(f"    {layer}: Available in {len(maps_with_layer)}/{len(used_maps)} maps")
             all_ready = False
         else:
-            print(f"  ✗ {layer}: Not available")
+            print(f"    {layer}: Not available")
             all_ready = False
     
-    print("\n🧪 Real Scene Extraction Test Results:")
+    print("\n Real Scene Extraction Test Results:")
     for map_name, success in extraction_test_results.items():
-        status = "✓" if success else "✗"
+        status = " " if success else "✗"
         print(f"  {status} {map_name}")
     
     if all_ready and all(extraction_test_results.values()):
-        print("\n" + "🎉 " * 20)
-        print("✓ ALL SYSTEMS GO!")
+        print("\n" + " " * 20)
+        print("  ALL SYSTEMS GO!")
         print("  You can proceed with VectorMapExtractor implementation.")
-        print("🎉 " * 20)
+        print(" " * 20)
     else:
-        print("\n⚠️  Issues detected - you may need fallback handling")
+        print("\n  Issues detected - you may need fallback handling")
     
     print("\n" + "=" * 80)
     
@@ -471,6 +471,6 @@ if __name__ == "__main__":
     results = check_mini_maps_comprehensive()
     
     if results:
-        print("\n✅ Inspection complete!")
+        print("\n Inspection complete!")
     else:
-        print("\n❌ Inspection failed.")
+        print("\n Inspection failed.")

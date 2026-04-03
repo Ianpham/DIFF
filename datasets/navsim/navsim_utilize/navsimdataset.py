@@ -31,7 +31,9 @@ from skimage.draw import polygon as draw_polygon
 # import visualizer
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 # NAVSIM imports
 from navsim.common.dataloader import SceneLoader
 from navsim.common.dataclasses import Scene, Frame, SceneFilter, SensorConfig
@@ -790,7 +792,7 @@ class NavsimDataset(Dataset):
             use_uniad_bev: Whether to use UniAD BEV encoder
             uniad_cache_dir: Directory containing cached UniAD features
             interpolate_bev: Whether to upsample UniAD to match bev_size
-                           - True: Upsample UniAD (64,64)→(200,200), slower but aligned
+                           - True: Upsample UniAD (64,64)->(200,200), slower but aligned
                            - False: Keep native UniAD (64,64), faster, mixed resolution
         """
         data_root = Path(os.environ['OPENSCENE_DATA_ROOT'])
@@ -873,7 +875,7 @@ class NavsimDataset(Dataset):
                 map_root=self.map_root,
                 map_version=self.map_version
             )
-            print(f"✓ Label extractor ready (12 channels)")
+            print(f"  Label extractor ready (12 channels)")
         else:
             self.label_extractor = None
         
@@ -899,7 +901,7 @@ class NavsimDataset(Dataset):
                 self.use_uniad_bev = False
                 self.bev_channels = 32
             else:
-                print(f"✓ Using precomputed UniAD BEV from: {self.uniad_cache_dir}")
+                print(f"  Using precomputed UniAD BEV from: {self.uniad_cache_dir}")
                 # Detect BEV feature dimensions from first available file
                 self._detect_bev_dimensions()
         else:
@@ -907,19 +909,19 @@ class NavsimDataset(Dataset):
             self.uniad_bev_size = bev_size
               
         # Print configuration
-        print(f"✓ Initialized {self.__class__.__name__}: {len(self)} scenes")
+        print(f"  Initialized {self.__class__.__name__}: {len(self)} scenes")
         print(f"  Label/LiDAR BEV size: {self.bev_size}")
         if self.use_uniad_bev:
             print(f"  UniAD BEV size: {self.uniad_bev_size}")
             if self.interpolate_bev:
                 if self.uniad_bev_size != self.bev_size:
-                    print(f"  ✓ Will upsample UniAD: {self.uniad_bev_size} → {self.bev_size}")
+                    print(f"    Will upsample UniAD: {self.uniad_bev_size} -> {self.bev_size}")
                 else:
-                    print(f"  ✓ UniAD already at target size, no upsampling needed")
+                    print(f"    UniAD already at target size, no upsampling needed")
             else:
                 print(f"  Mixed resolution mode: UniAD stays at {self.uniad_bev_size}")
 
-        print(f"\n✓ Loaded {len(self)} scenes")
+        print(f"\n  Loaded {len(self)} scenes")
         print("=" * 70)
     def _detect_bev_dimensions(self):
         """Detect BEV feature dimensions from cached files."""
@@ -999,7 +1001,7 @@ class NavsimDataset(Dataset):
                 current_size = (bev_features.shape[1], bev_features.shape[2])
                 
                 if current_size != self.bev_size:
-                    # Upsample: e.g., (64, 64) → (200, 200)
+                    # Upsample: e.g., (64, 64) -> (200, 200)
                     bev_features = F.interpolate(
                         bev_features.unsqueeze(0),  # Add batch dim: [1, C, H, W]
                         size=self.bev_size,         # Target: (200, 200)
@@ -1381,7 +1383,7 @@ def visualize_bev_labels(sample, save_path=None, show=True):
     if save_path:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"✓ Saved visualization to: {save_path}")
+        print(f"  Saved visualization to: {save_path}")
     
     # Show if requested
     if show:
@@ -1488,7 +1490,7 @@ def visualize_composite_bev(sample, save_path=None, show=True):
     if save_path:
         composite_path = str(save_path).replace('.png', '_composite.png')
         plt.savefig(composite_path, dpi=150, bbox_inches='tight')
-        print(f"✓ Saved composite to: {composite_path}")
+        print(f"  Saved composite to: {composite_path}")
     
     if show:
         plt.show()
@@ -1503,7 +1505,7 @@ def print_label_statistics(sample):
     labels = sample['labels']
     
     print("\n" + "=" * 70)
-    print("📊 DETAILED BEV LABEL STATISTICS")
+    print("  DETAILED BEV LABEL STATISTICS")
     print("=" * 70)
     
     for name, data in labels.items():
@@ -1544,15 +1546,15 @@ if __name__ == "__main__":
     map_root = "/home/phamtamadas/DPJI/transdiffuser/DDPM/datasets/navsim/download/maps"
     os.environ['NUPLAN_MAPS_ROOT'] = map_root
     
-    print(f"\n✓ Set NUPLAN_MAPS_ROOT to: {map_root}")
-    print(f"✓ Verifying map directory exists...")
+    print(f"\n  Set NUPLAN_MAPS_ROOT to: {map_root}")
+    print(f"  Verifying map directory exists...")
     
     if not Path(map_root).exists():
-        print(f"❌ ERROR: Map directory not found at {map_root}")
+        print(f"  ERROR: Map directory not found at {map_root}")
         print("Please check the path and try again.")
         exit(1)
     
-    print(f"✓ Map directory found!")
+    print(f"  Map directory found!")
     
     # List available maps
     print(f"\n📁 Maps in directory:")
@@ -1572,13 +1574,13 @@ if __name__ == "__main__":
         map_root=map_root
     )
     
-    print(f"\n✓ Dataset created: {len(dataset)} scenes")
+    print(f"\n  Dataset created: {len(dataset)} scenes")
     
     # Test single sample
     print("\nTesting single sample...")
     sample = dataset[0]
     
-    print("\n📊 Sample Contents:")
+    print("\n  Sample Contents:")
     print(f"  Camera BEV:        {sample['camera_bev'].shape}")
     print(f"  LiDAR BEV:         {sample['lidar_bev'].shape}")
     print(f"  Agent states:      {sample['agent_states'].shape}")
@@ -1597,7 +1599,7 @@ if __name__ == "__main__":
     scene = dataset.scene_loader.get_scene_from_token(dataset.scene_tokens[0])
     frame = scene.frames[dataset.history_length - 1]
 
-    print("\n📍 Ego Pose:")
+    print("\n  Ego Pose:")
     ego_pose = frame.ego_status.ego_pose
     print(f"  x={ego_pose[0]:.2f}, y={ego_pose[1]:.2f}, heading={ego_pose[2]:.4f} rad")
 
@@ -1693,10 +1695,10 @@ if __name__ == "__main__":
             show=False
         )
     
-    print(f"\n✓ Visualizations saved to: {vis_dir.absolute()}")
+    print(f"\n  Visualizations saved to: {vis_dir.absolute()}")
     print("=" * 70)
     print("\n" + "=" * 70)
-    print("✓ Test completed!")
+    print("  Test completed!")
     print("=" * 70)
 
 # result of taking 
@@ -1738,10 +1740,10 @@ if __name__ == "__main__":
 # Ego mask  # 0.1-0.5%  -> # Just your car (~4.5m × 2m)
 
 # 4. Specific Numbers Analysis
-# drivable_area:      4,464 / 40,000 = 11.2%  ✅ Normal (city driving)
-# vehicle_occupancy:  1,554 / 40,000 = 3.9%   ✅ Good (30 vehicles nearby)
-# crosswalks:         3,421 / 40,000 = 8.6%   ✅ Urban area with crossings
-# traffic_lights:     2,844 / 40,000 = 7.1%   ✅ Many controlled intersections
-# lane_boundaries:      161 / 40,000 = 0.4%   ✅ Thin lines
-# pedestrians:          561 / 40,000 = 1.4%   ✅ Urban scene
-# ego_mask:              50 / 40,000 = 0.1%   ✅ Single car footprint
+# drivable_area:      4,464 / 40,000 = 11.2%    Normal (city driving)
+# vehicle_occupancy:  1,554 / 40,000 = 3.9%     Good (30 vehicles nearby)
+# crosswalks:         3,421 / 40,000 = 8.6%     Urban area with crossings
+# traffic_lights:     2,844 / 40,000 = 7.1%     Many controlled intersections
+# lane_boundaries:      161 / 40,000 = 0.4%     Thin lines
+# pedestrians:          561 / 40,000 = 1.4%     Urban scene
+# ego_mask:              50 / 40,000 = 0.1%     Single car footprint

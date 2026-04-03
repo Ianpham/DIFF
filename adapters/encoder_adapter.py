@@ -25,7 +25,7 @@ from encode.requirements import (
     RequirementValidator,     
 )
 
-from datasets.navsim.navsim_utilize.data import BaseNavsimDataset
+from datasets.navsim.navsim_utilize.data import BaseNavsimDataset, EnhancedNavsimDataset, PhaseNavsimDataset
 #### Encoder configuration
 
 @dataclass
@@ -216,26 +216,26 @@ class EncoderAdapter:
         adaptations = []
         warnings_list = []
 
-        # ========================================================================
+        
         # LIDAR ENCODER SELECTION
-        # ========================================================================
+        
         lidar_config = self._configure_lidar_encoder()
         if lidar_config:
             encoders['lidar'] = lidar_config['encoder']
             adaptations.extend(lidar_config.get('adaptations', []))
             warnings_list.extend(lidar_config.get('warnings', []))
 
-        # ========================================================================
+        
         # CAMERA ENCODER SELECTION
-        # ========================================================================
+        
         camera_config = self._configure_camera_encoder()
         if camera_config:
             encoders['camera'] = camera_config['encoder']
             warnings_list.extend(camera_config.get('warnings', []))
 
-        # ========================================================================
+        
         # BEV LABEL ENCODER
-        # ========================================================================
+        
         if self.contract.has(FeatureType.BEV_LABELS):
             encoders['bev'] = EncoderConfig(
                 name='bev',
@@ -247,9 +247,9 @@ class EncoderAdapter:
                 }
             )
 
-        # ========================================================================
+        
         # AGENT ENCODER SELECTION
-        # ========================================================================
+        
         agent_config = self._configure_agent_encoder()
         encoders['agent'] = agent_config['encoder']
         if agent_config.get('needs_padding'):
@@ -257,9 +257,9 @@ class EncoderAdapter:
                 "Agent: Padding 5D states to 7D (zero acceleration)"
             )
 
-        # ========================================================================
+        
         # OPTIONAL ENCODERS
-        # ========================================================================
+        
         
         # Vector map (full mode only)
         if self.contract.has(FeatureType.VECTOR_MAP) and self.mode == 'full':
@@ -279,9 +279,9 @@ class EncoderAdapter:
                 requirements=StandardRequirements.GOAL_INTENT,
             )
 
-        # ========================================================================
+        
         # BUILD FINAL CONFIGURATION
-        # ========================================================================
+        
         return AdapterConfiguration(
             mode=self.mode,
             encoders=encoders,
@@ -299,8 +299,8 @@ class EncoderAdapter:
         Configure LiDAR encoder based on available data and mode.
         
         Priority:
-        1. Raw point cloud → PointPillars (full/efficient modes)
-        2. Preprocessed BEV → LidarBEV encoder (ALL modes)
+        1. Raw point cloud -> PointPillars (full/efficient modes)
+        2. Preprocessed BEV -> LidarBEV encoder (ALL modes)
         3. None if no LiDAR data available
         
         Returns:
@@ -405,9 +405,9 @@ class EncoderAdapter:
         Configure agent encoder with automatic dimension adaptation.
         
         Handles:
-        - 5D states → pad to 7D if in full/efficient mode
-        - 7D states → use directly
-        - Otherwise → use basic 5D encoder
+        - 5D states -> pad to 7D if in full/efficient mode
+        - 7D states -> use directly
+        - Otherwise -> use basic 5D encoder
         
         Returns:
             Dict with 'encoder', 'needs_padding'
@@ -468,7 +468,7 @@ class EncoderAdapter:
         
         # If degradation is allowed, just print warnings
         if not is_valid and self.allow_degradation:
-            print("\n⚠ Warning: Using degraded configuration due to missing features")
+            print("\n  Warning: Using degraded configuration due to missing features")
             validator.print_report(report)
         
         # Add any additional warnings from validation
@@ -495,7 +495,7 @@ class EncoderAdapter:
         #import encoder modules
         try:
             from encode.modality_encoder import (
-                PointPillarsBackbone,
+                
                 LidarEmbedding,
                 MultiCameraEncoder,
                 BEVEncoder
@@ -517,10 +517,10 @@ class EncoderAdapter:
             params['hidden_size'] = hidden_size
 
             # build encoder based on type
-            if enc_type == 'PointPillars':
-                encoders[name] = PointPillarsBackbone(**params).to(device)
+            # if enc_type == 'PointPillars':
+            #     encoders[name] = (**params).to(device)
 
-            elif enc_type == 'LidarBEV':
+            if enc_type == 'LidarBEV':
                 encoders[name] = LidarEmbedding(
                     in_channels= 2,
                     hidden_size= hidden_size,
@@ -563,38 +563,46 @@ class EncoderAdapter:
         """
 
         adapted = {}
-        
+    
         for name, config in self.config.encoders.items():
             input_key = config.input_key
 
-            # check if input exists
             if input_key not in batch:
-                # try fallback
-                if config.fallback_key  and config.fallback_key in batch:
+                if config.fallback_key and config.fallback_key in batch:
                     data = batch[config.fallback_key]
-
                 else:
-                    warnings.warn(
-                        f"Missing out '{input_key}' for encoder '{name}'"
-                    )
+                    warnings.warn(f"Missing out '{input_key}' for encoder '{name}'")
                     continue
-
-            
             else:
                 data = batch[input_key]
 
-            
-            # agent state padding
             if name == 'agent' and config.needs_padding:
-                data =self._pad_agent_states(data)
+                data = self._pad_agent_states(data)
 
-            
-            # stores adapted data
             adapted[name] = data
 
-        
+        # ── Passthrough: copy all keys not consumed by encoders ──────────
+        # gt_trajectory, agent_history, multi_agent_*, context features, meta, etc.
+        # are produced by the dataset but never declared as encoder inputs,
+        # so they would otherwise be silently dropped above.
+        ENCODER_INPUT_KEYS = {cfg.input_key for cfg in self.config.encoders.values()}
+        PASSTHROUGH_KEYS = [
+            'gt_trajectory',
+            'agent_history',
+            'multi_agent_states',
+            'multi_agent_history',
+            'intersection_features',
+            'goal_features',
+            'traffic_control_features',
+            'pedestrian_features',
+            'token',
+        ]
+        for key in PASSTHROUGH_KEYS:
+            if key in batch and key not in adapted:
+                adapted[key] = batch[key]
+
         return adapted
-    
+        
 
     def _pad_agent_states(self, states: torch.Tensor) -> torch.Tensor:
         """

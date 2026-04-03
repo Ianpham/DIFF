@@ -13,6 +13,8 @@ Author: Complete enhanced version
 """
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import os
 from pathlib import Path
@@ -39,9 +41,9 @@ from nuplan.common.actor_state.state_representation import TimePoint
 # map including in this phase, navsim is for very light experience
 from navsim_utilize.vectormapfeature import VectorMapExtractor, extract__vector_map_for_batch
 
-# ===========================================================================
+ 
 # Trajectory Sampling Configuration
-# ===========================================================================
+ 
 
 class TrajectoryConfig:
     """Configuration for trajectory sampling aligned with NAVSIM."""
@@ -68,9 +70,9 @@ class TrajectoryConfig:
     )
 
 
-# ===========================================================================
+ 
 # Difficulty Levels for Curriculum Learning
-# ===========================================================================
+ 
 
 class DifficultyLevel(Enum):
     """Scenario difficulty levels for curriculum learning."""
@@ -80,9 +82,9 @@ class DifficultyLevel(Enum):
     EXPERT = "expert"
 
 
-# ===========================================================================
+ 
 # BEV Label Extractor (12 Semantic Channels)
-# ===========================================================================
+ 
 
 class BEVLabelExtractor:
     """Extract all 12 BEV labels from NAVSIM HD maps + annotations."""
@@ -736,9 +738,9 @@ class BEVLabelExtractor:
         }
 
 
-# ===========================================================================
+ 
 # Scenario Builder with NavSimScenario
-# ===========================================================================
+ 
 
 class NavsimScenarioBuilder:
     """Build NavSimScenario objects from NAVSIM scenes."""
@@ -786,9 +788,9 @@ class NavsimScenarioBuilder:
         return map_api
 
 
-# ===========================================================================
+ 
 # Route and Mission Goal Extractor
-# ===========================================================================
+ 
 
 class RouteExtractor:
     """Extract route and mission goal information from scenarios."""
@@ -834,9 +836,9 @@ class RouteExtractor:
         return route_info
 
 
-# ===========================================================================
+ 
 # Enhanced Difficulty Analyzer
-# ===========================================================================
+ 
 
 @dataclass
 class ScenarioDifficulty:
@@ -932,9 +934,9 @@ class DifficultyAnalyzer:
         )
 
 
-# ===========================================================================
+ 
 # Complete Enhanced Dataset
-# ===========================================================================
+ 
 
 class EnhancedNavsimDataset(Dataset):
     """
@@ -1058,7 +1060,7 @@ class EnhancedNavsimDataset(Dataset):
                 if self.difficulty_scores[token].difficulty_level == difficulty_filter
             ]
             self.scene_tokens = filtered_tokens
-            print(f"✓ Filtered to {len(filtered_tokens)} {difficulty_filter.value} scenes")
+            print(f"  Filtered to {len(filtered_tokens)} {difficulty_filter.value} scenes")
         else:
             self.scene_tokens = all_tokens
         
@@ -1068,7 +1070,7 @@ class EnhancedNavsimDataset(Dataset):
         if self.use_cache:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         
-        print(f"\n✓ Loaded {len(self)} scenes")
+        print(f"\n  Loaded {len(self)} scenes")
         self._print_difficulty_stats()
         print("=" * 70)
 
@@ -1076,7 +1078,7 @@ class EnhancedNavsimDataset(Dataset):
         self.extract_vector_maps = extract_vector_maps
         
         if self.extract_vector_maps:
-            from navsim_utilize.vectormapfeature import VectorMapExtractor
+            # from navsim_utilize.vectormapfeature import VectorMapExtractor
 
             self.vector_map_extractor = VectorMapExtractor(
                 map_root= map_root or self.map_root,
@@ -1089,13 +1091,13 @@ class EnhancedNavsimDataset(Dataset):
             #chace for map APIs
             self._map_api_cache = {}
 
-            print(f"✓ Vector map extractor initialized")
+            print(f"  Vector map extractor initialized")
             print(f"  - Max points per lane: {max_points_per_lane}")
             print(f"  - Feature dimension: {vector_map_feature_dim}")
             print(f"  - Max crosswalks: {max_crosswalks}")
         else:
             self.vector_map_extractor = None
-            print("⚠️  Vector map extraction DISABLED")
+            print("   Vector map extraction DISABLED")
 
         # UniAD BEV cache setup
         self.uniad_bev_size = None  # Will be detected from cache
@@ -1109,28 +1111,28 @@ class EnhancedNavsimDataset(Dataset):
             self.uniad_cache_dir = Path(uniad_cache_dir)
             
             if not self.uniad_cache_dir.exists():
-                print(f"⚠ Warning: UniAD cache directory not found: {self.uniad_cache_dir}")
+                print(f"  Warning: UniAD cache directory not found: {self.uniad_cache_dir}")
                 print(f"  Please run: python uniad_segmentation.py --precompute-all")
                 print(f"  Falling back to LiDAR-based BEV")
                 self.use_uniad_bev = False
                 self.bev_channels = 32
             else:
-                print(f"✓ Using precomputed UniAD BEV from: {self.uniad_cache_dir}")
+                print(f"  Using precomputed UniAD BEV from: {self.uniad_cache_dir}")
                 # Detect BEV feature dimensions from first available file
                 self._detect_bev_dimensions()
         else:
             self.bev_channels = 32  # Fallback placeholder channels
             self.uniad_bev_size = bev_size
         # Print configuration
-        print(f"✓ Initialized {self.__class__.__name__}: {len(self)} scenes")
+        print(f"  Initialized {self.__class__.__name__}: {len(self)} scenes")
         print(f"  Label/LiDAR BEV size: {self.bev_size}")
         if self.use_uniad_bev:
             print(f"  UniAD BEV size: {self.uniad_bev_size}")
             if self.interpolate_bev:
                 if self.uniad_bev_size != self.bev_size:
-                    print(f"  ✓ Will upsample UniAD: {self.uniad_bev_size} → {self.bev_size}")
+                    print(f"    Will upsample UniAD: {self.uniad_bev_size} → {self.bev_size}")
                 else:
-                    print(f"  ✓ UniAD already at target size, no upsampling needed")
+                    print(f"    UniAD already at target size, no upsampling needed")
             else:
                 print(f"  Mixed resolution mode: UniAD stays at {self.uniad_bev_size}")
 
@@ -1140,7 +1142,7 @@ class EnhancedNavsimDataset(Dataset):
         cache_files = list(self.uniad_cache_dir.glob("*_bev.pt"))
         
         if not cache_files:
-            print(f"⚠ No cached BEV files found in {self.uniad_cache_dir}")
+            print(f"  No cached BEV files found in {self.uniad_cache_dir}")
             self.use_uniad_bev = False
             self.bev_channels = 32  # fallback
             self.uniad_bev_size = self.bev_size
@@ -1157,7 +1159,7 @@ class EnhancedNavsimDataset(Dataset):
             print(f"  UniAD cached size: {self.uniad_bev_size}")
                 
         except Exception as e:
-            print(f"⚠ Error loading sample BEV: {e}")
+            print(f"  Error loading sample BEV: {e}")
             self.use_uniad_bev = False
             self.bev_channels = 32
             self.uniad_bev_size = self.bev_size
@@ -1203,7 +1205,7 @@ class EnhancedNavsimDataset(Dataset):
             levels[diff.difficulty_level] += 1
             scores.append(diff.difficulty_score)
         
-        print("\n📊 Difficulty Distribution:")
+        print("\n  Difficulty Distribution:")
         for level, count in levels.items():
             pct = count / len(self.difficulty_scores) * 100
             print(f"  {level.value:8s}: {count:4d} ({pct:5.1f}%)")
@@ -1523,9 +1525,9 @@ class EnhancedNavsimDataset(Dataset):
         }
 
 
-# ===========================================================================
+ 
 # Collate Function
-# ===========================================================================
+ 
 
 def enhanced_collate_fn(batch):
     """Collate function for DataLoader."""
@@ -1568,7 +1570,7 @@ def enhanced_collate_fn(batch):
             max_crosswalks = max(f.num_crosswalks for f in valid_features)
 
             # FIX: Pad samples with None to match batch size
-            while len(valid_features) < len(batch):  # ✅ FIXED: < instead of >
+            while len(valid_features) < len(batch):  #   FIXED: < instead of >
                 # Create empty feature placeholder (duplicate first, will be masked)
                 valid_features.append(valid_features[0])
 
@@ -1621,9 +1623,9 @@ def enhanced_collate_fn(batch):
         'metadata': [item['metadata'] for item in batch],
         'vector_maps': vector_map,
     }
-# ===========================================================================
+ 
 # Curriculum Learning Manager
-# ===========================================================================
+ 
 
 class CurriculumLearningManager:
     """Manage curriculum learning stages."""
@@ -1657,9 +1659,9 @@ class CurriculumLearningManager:
         return datasets
 
 
-# ===========================================================================
+ 
 # Test Script
-# ===========================================================================
+ 
 
 if __name__ == "__main__":
     import os
@@ -1682,12 +1684,12 @@ if __name__ == "__main__":
         map_root=map_root
     )
     
-    print(f"\n✓ Created dataset: {len(dataset)} scenes")
+    print(f"\n  Created dataset: {len(dataset)} scenes")
     
     # Get sample
     sample = dataset[0]
     
-    print("\n📊 Sample Contents:")
+    print("\n  Sample Contents:")
     print(f"  Camera BEV:     {sample['camera_images'].shape}")
     print(f"  LiDAR BEV:      {sample['lidar_original'].shape}")
     print(f"  Camera BEV:     {sample['camera_bev'].shape}")
@@ -1698,7 +1700,7 @@ if __name__ == "__main__":
         for k, v in sample['labels'].items():
             print(f"    - {k:20s}: {v.shape}")
     
-    print("\n📍 Metadata:")
+    print("\n  Metadata:")
     print(f"  Map:       {sample['metadata']['map_name']}")
     print(f"  Difficulty: {sample['metadata']['difficulty']}")
     print(f"  Route:     {sample['metadata']['route']}")
@@ -1718,5 +1720,5 @@ if __name__ == "__main__":
     print(f"  Batch labels:     {len(batch['labels'])} channels")
     
     print("\n" + "=" * 70)
-    print("✓ All tests completed!")
+    print("  All tests completed!")
     print("=" * 70)

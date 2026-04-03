@@ -38,7 +38,7 @@ def update_config_to_minimal(filepath='bev_process.py'):
         with open(filepath, 'w') as f:
             f.write(content)
         
-        print("\n✓ Updated successfully!")
+        print("\n  Updated successfully!")
         print("\nChanges made:")
         print("  - bev_size: (64, 64) → (32, 32)  [4x less memory]")
         print("  - batch_size: 16 → 1              [16x less memory per iteration]")
@@ -47,7 +47,7 @@ def update_config_to_minimal(filepath='bev_process.py'):
         print("  python bev_process.py")
         
     else:
-        print("\n⚠️  Could not automatically update config")
+        print("\n   Could not automatically update config")
         print("\nPlease manually edit bev_process.py:")
         print("\n" + "="*80)
         print("Find this section:")
@@ -92,11 +92,11 @@ def update_config_to_minimal(filepath='bev_process.py'):
    - bev_size: (32,32) → (48,48) → (64,64)
 
 4. Typical memory usage:
-   - batch_size=1, bev=(32,32): ~3-4GB ✓ Safe
-   - batch_size=2, bev=(48,48): ~4-5GB ✓ Should work
+   - batch_size=1, bev=(32,32): ~3-4GB   Safe
+   - batch_size=2, bev=(48,48): ~4-5GB   Should work
    - batch_size=4, bev=(64,64): ~5-6GB ✓ Good balance
    - batch_size=8, bev=(64,64): ~6-7GB ⚠️  Risky
-   - batch_size=16, bev=(64,64): ~7-8GB ❌ Will crash
+   - batch_size=16, bev=(64,64): ~7-8GB   Will crash
 """)
     print("="*80 + "\n")
 
@@ -109,6 +109,6 @@ if __name__ == "__main__":
     try:
         update_config_to_minimal(filepath)
     except FileNotFoundError:
-        print(f"\n❌ File not found: {filepath}")
+        print(f"\n  File not found: {filepath}")
         print("\nPlease run from the same directory as bev_process.py")
         print("Or specify path: python fix_memory_config.py /path/to/bev_process.py")

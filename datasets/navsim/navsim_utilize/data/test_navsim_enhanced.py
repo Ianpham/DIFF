@@ -21,18 +21,18 @@ def test_enhanced_dataset():
     print(contract)
     
     # Verify features
-    assert contract.has(FeatureType.LIDAR_POINTS)  # ✓ Raw points
-    assert contract.has(FeatureType.LIDAR_BEV)     # ✓ BEV
-    assert contract.has(FeatureType.CAMERA_IMAGES) # ✓ 8 cameras
-    assert contract.has(FeatureType.BEV_LABELS)    # ✓ Labels
-    assert contract.has(FeatureType.AGENT_NEARBY)  # ✓ Multi-agent
+    assert contract.has(FeatureType.LIDAR_POINTS)  #   Raw points
+    assert contract.has(FeatureType.LIDAR_BEV)     #   BEV
+    assert contract.has(FeatureType.CAMERA_IMAGES) #   8 cameras
+    assert contract.has(FeatureType.BEV_LABELS)    #   Labels
+    assert contract.has(FeatureType.AGENT_NEARBY)  #   Multi-agent
     
-    assert contract.agent_state_dim == 7           # ✓ Full 7D
-    assert contract.has_acceleration               # ✓ Has acceleration
-    assert contract.has_nearby_agents              # ✓ Multi-agent
-    assert contract.num_cameras == 8               # ✓ All cameras
+    assert contract.agent_state_dim == 7           #   Full 7D
+    assert contract.has_acceleration               #   Has acceleration
+    assert contract.has_nearby_agents              #   Multi-agent
+    assert contract.num_cameras == 8               #   All cameras
     
-    print("\n✓ EnhancedNavsimDataset contract test passed!")
+    print("\n  EnhancedNavsimDataset contract test passed!")
 
 def test_enhanced_with_adapter():
     """Test adapter with EnhancedNavsimDataset."""
@@ -58,7 +58,7 @@ def test_enhanced_with_adapter():
     assert 'agent' in adapter.config.encoders
     assert not adapter.config.encoders['agent'].needs_padding  # Already 7D!
     
-    print("\n✓ Adapter with EnhancedNavsimDataset test passed!")
+    print("\n  Adapter with EnhancedNavsimDataset test passed!")
 
 def test_sample():
     """Test getting a sample."""
@@ -100,7 +100,7 @@ def test_sample():
     assert len(sample['camera_images']) == 8      # All cameras
     assert sample['nearby_agents'].shape[1] == 10 # Up to 10 agents
     
-    print("\n✓ Sample test passed!")
+    print("\n  Sample test passed!")
 
 if __name__ == "__main__":
     print("=" * 70)
@@ -119,5 +119,8 @@ if __name__ == "__main__":
     test_sample()
     
     print("\n" + "=" * 70)
-    print("✓ ALL ENHANCED DATASET TESTS PASSED!")
+    print("  ALL ENHANCED DATASET TESTS PASSED!")
     print("=" * 70)
+
+
+    

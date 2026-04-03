@@ -37,7 +37,7 @@ scene_loader = SceneLoader(
     sensor_config=sensor_config
 )
 
-print(f"✓ SceneLoader created with {len(scene_loader.tokens)} scenes\n")
+print(f"  SceneLoader created with {len(scene_loader.tokens)} scenes\n")
 
 # Load first scene
 token = scene_loader.tokens[0]
@@ -58,14 +58,14 @@ print(f"  Ego pose: {frame.ego_status.ego_pose}")
 print(f"  Annotations object: {frame.annotations}")
 
 if frame.annotations is None:
-    print("  ❌ ANNOTATIONS ARE NONE!")
+    print("    ANNOTATIONS ARE NONE!")
     print("\nThis is the problem! Annotations are not being loaded.")
     print("\nSolutions:")
     print("  1. Check if the pickle files contain annotations")
     print("  2. Verify data paths are correct")
     print("  3. Ensure you're using the right data split (mini vs trainval)")
 else:
-    print(f"  ✓ Annotations exist")
+    print(f"    Annotations exist")
     print(f"  Number of boxes: {len(frame.annotations.boxes)}")
     
     if len(frame.annotations.boxes) > 0:
@@ -75,11 +75,11 @@ else:
         
         # Check if velocity_3d exists
         if hasattr(frame.annotations, 'velocity_3d') and frame.annotations.velocity_3d is not None:
-            print(f"  ✓ velocity_3d exists: {frame.annotations.velocity_3d.shape}")
+            print(f"    velocity_3d exists: {frame.annotations.velocity_3d.shape}")
         else:
-            print(f"  ❌ velocity_3d is missing!")
+            print(f"    velocity_3d is missing!")
     else:
-        print(f"  ⚠️  Annotations exist but boxes array is empty!")
+        print(f"     Annotations exist but boxes array is empty!")
 
 # Test the extractor directly
 print("\n" + "=" * 70)
@@ -96,14 +96,14 @@ extractor = BEVLabelExtractor(
 
 try:
     labels = extractor.extract_all_labels(scene, frame_idx)
-    print("✓ Label extraction succeeded!")
+    print("  Label extraction succeeded!")
     print("\nLabel statistics:")
     for key, val in labels.items():
         import numpy as np
         nonzero = np.count_nonzero(val)
         print(f"  {key:25s}: non-zero={nonzero:6d}, dtype={val.dtype}")
 except Exception as e:
-    print(f"❌ Label extraction failed with error:")
+    print(f"  Label extraction failed with error:")
     print(f"   {type(e).__name__}: {e}")
     import traceback
     traceback.print_exc()

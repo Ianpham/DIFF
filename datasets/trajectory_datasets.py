@@ -128,5 +128,5 @@ if __name__ == "__main__":
     dataset = build_trajectory_dataset(Args())
     batch = dataset[0]
     
-    print("✓ Loaded batch with keys:", batch.keys())
-    print("✓ Trajectory shape:", batch['future_trajectory'].shape)
+    print("  Loaded batch with keys:", batch.keys())
+    print("  Trajectory shape:", batch['future_trajectory'].shape)

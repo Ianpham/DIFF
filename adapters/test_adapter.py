@@ -84,7 +84,7 @@ def test_adapter_modes():
             assert adapter.mode in ['minimal', 'efficient', 'full']
             print(f"Auto-selected mode: {adapter.mode}")
     
-    print("\n✓ Adapter modes test passed!")
+    print("\n  Adapter modes test passed!")
 
 def test_batch_adaptation():
     """Test batch adaptation (padding, etc.)."""
@@ -126,7 +126,7 @@ def test_batch_adaptation():
     ay = adapted['agent'][0, 0, 5]
     assert ax == 0.0 and ay == 0.0, "Padded acceleration should be zero"
     
-    print("\n✓ Batch adaptation test passed!")
+    print("\n  Batch adaptation test passed!")
 
 def test_with_acceleration():
     """Test adapter with dataset that has acceleration."""
@@ -155,7 +155,7 @@ def test_with_acceleration():
     # Check that it's still 7D (no padding)
     assert adapted['agent'].shape[-1] == 7
     
-    print("\n✓ Adapter with acceleration test passed!")
+    print("\n  Adapter with acceleration test passed!")
 
 def test_quick_build():
     """Test quick_build convenience function."""
@@ -172,7 +172,7 @@ def test_quick_build():
     # Check that it works
     assert len(adapter.config.encoders) > 0
     
-    print("\n✓ Quick build test passed!")
+    print("\n  Quick build test passed!")
 
 def test_optimal_batch_size():
     """Test optimal batch size calculation."""
@@ -190,7 +190,7 @@ def test_optimal_batch_size():
     assert batch_size > 0
     assert batch_size <= dataset.get_contract().max_batch_size
     
-    print("\n✓ Optimal batch size test passed!")
+    print("\n  Optimal batch size test passed!")
     
 
 if __name__ == "__main__":
@@ -225,5 +225,5 @@ if __name__ == "__main__":
     test_optimal_batch_size()
     
     print("\n" + "=" * 70)
-    print("✓ ALL ADAPTER TESTS PASSED!")
+    print("  ALL ADAPTER TESTS PASSED!")
     print("=" * 70)

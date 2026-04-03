@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import math
 from torch.jit import Final 
@@ -7,9 +8,9 @@ from timm.layers.helpers import to_2tuple
 from functools import partial
 from einops import rearrange
 
-# ========================================
+
 # UTILITY FUNCTIONS
-# ========================================
+
 
 def convert_list_to_tensor(list_convert):
     if len(list_convert) and list_convert[0] is not None:
@@ -49,9 +50,9 @@ def _gumbel_sigmoid(
     return ret
 
 
-# ========================================
+
 # DYNAMIC MODULES
-# ========================================
+
 
 class TokenSelect(nn.Module):
     def __init__(
@@ -127,9 +128,9 @@ class DiffRate(nn.Module):
         return channel_select
 
 
-# ========================================
+
 # DYNAMIC LINEAR LAYERS
-# ========================================
+
 
 def round_to_nearest(input_size, width_mult, num_heads, min_value=1):
     new_width_mult = round(num_heads * width_mult) * 1.0 / num_heads
@@ -203,9 +204,9 @@ class DynaQKVLinear(nn.Linear):
         return nn.functional.linear(input_x, weight, bias)
 
 
-# ========================================
+
 # ATTENTION AND MLP
-# ========================================
+
 
 class Attention(nn.Module):
     def __init__(
@@ -251,20 +252,38 @@ class Attention(nn.Module):
         q, k, v = qkv.unbind(0)  # Each: (N, num_heads, T, head_dim)
         q, k = self.q_norm(q), self.k_norm(k)
 
-        q = q * self.scale
-        attn = q @ k.transpose(-2, -1)  # (N, num_heads, T, T)
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-        x = attn @ v  # (N, num_heads, T, head_dim)
 
-        x = x.transpose(1, 2).reshape(B, N, -1)  # (N, T, D)
+
+        # q = q * self.scale
+        # attn = q @ k.transpose(-2, -1)  # (N, num_heads, T, T)
+        # attn = attn.softmax(dim=-1)
+        # attn = self.attn_drop(attn)
+        # x = attn @ v  # (N, num_heads, T, head_dim)
+
+        # x = x.transpose(1, 2).reshape(B, N, -1)  # (N, T, D)
         
-        if channel_mask is not None:
-            # channel_mask: (N, num_heads) -> (N, 1, num_heads * head_dim)
-            channel_mask = channel_mask.unsqueeze(dim=2).repeat(1, 1, self.head_dim)
-            channel_mask = channel_mask.flatten(1).unsqueeze(1)  # (N, 1, D)
-            x = channel_mask * x
+        # if channel_mask is not None:
+        #     # channel_mask: (N, num_heads) -> (N, 1, num_heads * head_dim)
+        #     channel_mask = channel_mask.unsqueeze(dim=2).repeat(1, 1, self.head_dim)
+        #     channel_mask = channel_mask.flatten(1).unsqueeze(1)  # (N, 1, D)
+        #     x = channel_mask * x
                     
+        # x = self.proj(x)
+        # x = self.proj_drop(x)
+        # return x
+        # here we use flash attention, due over allocation data memory
+        x = F.scaled_dot_product_attention(
+            q, k, v,
+            dropout_p=self.attn_drop.p if self.training else 0.0,
+        )  # (B, num_heads, T, head_dim)
+
+        x = x.transpose(1, 2).reshape(B, N, -1)  # (B, T, D)
+
+        if channel_mask is not None:
+            channel_mask = channel_mask.unsqueeze(dim=2).repeat(1, 1, self.head_dim)
+            channel_mask = channel_mask.flatten(1).unsqueeze(1)  # (B, 1, D)
+            x = channel_mask * x
+
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -339,9 +358,9 @@ def modulate(x, shift, scale):
     return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
 
 
-# ========================================
+
 # EMBEDDERS
-# ========================================
+
 
 class TimestepEmbedder(nn.Module):
     def __init__(self, hidden_size, frequency_embedding_size=256):
@@ -406,7 +425,7 @@ class TrajectoryEmbedder(nn.Module):
             null_traj = self.null_trajectory.view(1, 1, 1, -1).expand(B, N, T, -1)
             trajectory = torch.where(mask, null_traj, trajectory)
         
-        # Reshape for MLP: (B, N, T, 5) → (B*N*T, 5)
+        # Reshape for MLP: (B, N, T, 5) -> (B*N*T, 5)
         trajectory = trajectory.reshape(B * N * T, C)
         emb = self.mlp(trajectory)  # (B*N*T, hidden_size)
         emb = emb.reshape(B, N, T, -1)  # (B, N, T, hidden_size)
@@ -435,10 +454,10 @@ class HistoryEncoder(nn.Module):
             out: (B, N, 6, hidden_size) - Pooled history per agent
         """
         B, N, T, C = x.shape
-        # Pool every 5 frames: (B, N, 30, 5) → (B, N, 6, 25)
+        # Pool every 5 frames: (B, N, 30, 5) -> (B, N, 6, 25)
         x = x.reshape(B, N, T // self.pool_size, self.pool_size * C)
         
-        # Reshape for MLP: (B, N, 6, 25) → (B*N*6, 25)
+        # Reshape for MLP: (B, N, 6, 25) -> (B*N*6, 25)
         x = x.reshape(B * N * (T // self.pool_size), self.pool_size * C)
         x = self.mlp(x)  # (B*N*6, hidden_size)
         x = x.reshape(B, N, T // self.pool_size, -1)  # (B, N, 6, hidden_size)
@@ -459,15 +478,15 @@ class FutureTimeEmbedder(nn.Module):
         Returns:
             (B, N, 20, hidden_size) - Broadcast temporal embeddings
         """
-        # (20, D) → (1, 1, 20, D) → (B, N, 20, D)
+        # (20, D) -> (1, 1, 20, D) -> (B, N, 20, D)
         return self.time_embed.unsqueeze(0).unsqueeze(0).expand(
             batch_size, num_agents, -1, -1
         )
 
 
-# ========================================
+
 # ENCODER OUTPUT CONTAINER
-# ========================================
+
 
 class EncoderOutput:
     """
@@ -520,9 +539,9 @@ class EncoderOutput:
         self.goals = None                # [B, N, 2] if available
 
 
-# ========================================
+
 # AGENT ENCODER PLACEHOLDER
-# ========================================
+
 
 class AgentEncoder(nn.Module):
     """
@@ -559,7 +578,7 @@ class AgentEncoder(nn.Module):
         # Create encoder output container
         output = EncoderOutput()
         
-        # Embed agent states: (B, N, 5) → (B, N, D)
+        # Embed agent states: (B, N, 5) -> (B, N, D)
         agent_emb = self.state_mlp(agent_states.reshape(B * N, -1))
         agent_emb = agent_emb.reshape(B, N, D)
         
@@ -577,9 +596,9 @@ class AgentEncoder(nn.Module):
         return output
 
 
-# ========================================
+
 # MODALITY EMBEDDERS
-# ========================================
+
 
 class LidarEmbedding(nn.Module):
     def __init__(self, in_channels=2, hidden_size=768, patch_size=4):
@@ -817,9 +836,9 @@ class GoalIntent(nn.Module):
         return x
 
 
-# ========================================
+
 # CROSS-MODAL ATTENTION
-# ========================================
+
 
 class CrossModalAttention(nn.Module):
     def __init__(self, hidden_size, num_heads=8):
@@ -858,9 +877,9 @@ class CrossModalAttention(nn.Module):
         return out
 
 
-# ========================================
+
 # DiT BLOCK
-# ========================================
+
 
 class DiTBlock(nn.Module):
     def __init__(
@@ -940,9 +959,9 @@ class DiTBlock(nn.Module):
         return x, attn_weight_mask, mlp_weight_mask, token_select
 
 
-# ========================================
+
 # FINAL LAYER
-# ========================================
+
 
 class FinalLayer(nn.Module):
     def __init__(self, hidden_size, patch_size, out_channels):
@@ -968,9 +987,9 @@ class FinalLayer(nn.Module):
         return x
 
 
-# ========================================
+
 # POSITIONAL EMBEDDING
-# ========================================
+
 
 def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=0):
     grid_h = np.arange(grid_size, dtype=np.float32)
@@ -1005,9 +1024,9 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     return emb
 
 
-# ========================================
+
 # MAIN MODEL
-# ========================================
+
 
 class TransDiffuserDiT(nn.Module):
     """
@@ -1326,20 +1345,20 @@ class TransDiffuserDiT(nn.Module):
         """
         B, N, T_future, C = noisy_trajectory.shape
         
-        # ========== STEP 1: ENCODE CONTEXT (SHARED) ==========
+        #  STEP 1: ENCODE CONTEXT (SHARED) 
         context_encoded = self.encode_modalities(context)  # (B, T_context, D)
         
-        # ========== STEP 2: ENCODE AGENTS (PER-AGENT) ==========
+        #  STEP 2: ENCODE AGENTS (PER-AGENT) 
         # This is where the encoder from the matrix would be called
         encoder_output = self.agent_encoder(agent_states)  # EncoderOutput object
         
         # Extract level2_interaction (primary for medium decoder)
         agent_features = encoder_output.level2_interaction  # (B, N, D)
         
-        # ========== STEP 3: ENCODE HISTORY (PER-AGENT) ==========
+        #  STEP 3: ENCODE HISTORY (PER-AGENT) 
         history_tokens = self.history_encoder(agent_history)  # (B, N, 6, D)
         
-        # ========== STEP 4: EMBED NOISY TRAJECTORY (PER-AGENT) ==========
+        #  STEP 4: EMBED NOISY TRAJECTORY (PER-AGENT) 
         trajectory_emb = self.trajectory_embed(
             noisy_trajectory,  # (B, N, 20, 5)
             self.training
@@ -1349,7 +1368,7 @@ class TransDiffuserDiT(nn.Module):
         future_time_emb = self.future_time_embedder(B, N)  # (B, N, 20, D)
         trajectory_emb = trajectory_emb + future_time_emb  # (B, N, 20, D)
         
-        # ========== STEP 5: TIMESTEP EMBEDDING ==========
+        #  STEP 5: TIMESTEP EMBEDDING 
         t_emb = self.t_embedder(t)  # (B, D)
         
         # Conditioning: timestep + average trajectory info
@@ -1357,7 +1376,7 @@ class TransDiffuserDiT(nn.Module):
         traj_summary = trajectory_emb.mean(dim=(1, 2))  # (B, D)
         c = t_emb + traj_summary  # (B, D)
         
-        # ========== STEP 6: COMBINE ALL TOKENS ==========
+        #  STEP 6: COMBINE ALL TOKENS 
         # Flatten agent-specific tokens
         B, N, T_hist, D = history_tokens.shape
         history_flat = history_tokens.reshape(B, N * T_hist, D)  # (B, N*6, D)
@@ -1384,7 +1403,7 @@ class TransDiffuserDiT(nn.Module):
             # If exceeds max, truncate pos_embed (should not happen if max_agents set correctly)
             all_tokens = all_tokens + self.pos_embed
         
-        # ========== STEP 7: TRANSFORMER BLOCKS ==========
+        #  STEP 7: TRANSFORMER BLOCKS 
         token_select_list = []
         attn_weight_masks_list = []
         mlp_weight_masks_list = []
@@ -1397,19 +1416,19 @@ class TransDiffuserDiT(nn.Module):
             mlp_weight_masks_list.append(mlp_mask)
             token_select_list.append(token)
         
-        # ========== STEP 8: EXTRACT TRAJECTORY TOKENS ==========
+        #  STEP 8: EXTRACT TRAJECTORY TOKENS 
         # Extract only the trajectory tokens (last N*20 tokens)
         traj_start_idx = -N * T_fut
         traj_tokens = all_tokens[:, traj_start_idx:, :]  # (B, N*20, D)
         
-        # Reshape back: (B, N*20, D) → (B, N, 20, D)
+        # Reshape back: (B, N*20, D) -> (B, N, 20, D)
         traj_tokens = traj_tokens.reshape(B, N, T_fut, D)
         
-        # ========== STEP 9: PROJECT TO OUTPUT ==========
+        #  STEP 9: PROJECT TO OUTPUT 
         # Modulate using final layer
         shift, scale = self.final_layer.adaLN_modulation(c).chunk(2, dim=1)
         
-        # Reshape for modulation: (B, N, 20, D) → (B, N*20, D)
+        # Reshape for modulation: (B, N, 20, D) -> (B, N*20, D)
         traj_tokens_flat = traj_tokens.reshape(B, N * T_fut, D)
         
         # Modulate
@@ -1418,13 +1437,13 @@ class TransDiffuserDiT(nn.Module):
             shift, scale
         )
         
-        # Project: (B, N*20, D) → (B, N*20, 5)
+        # Project: (B, N*20, D) -> (B, N*20, 5)
         out_flat = self.trajectory_head(traj_tokens_flat)  # (B, N*20, 5)
         
-        # Reshape: (B, N*20, 5) → (B, N, 20, 5)
+        # Reshape: (B, N*20, 5) -> (B, N, 20, 5)
         out = out_flat.reshape(B, N, T_fut, 5)
         
-        # ========== STEP 10: RETURN ==========
+        #  STEP 10: RETURN 
         if not complete_model:
             attn_weight_masks = convert_list_to_tensor(attn_weight_masks_list)
             mlp_weight_masks = convert_list_to_tensor(mlp_weight_masks_list)
@@ -1503,9 +1522,9 @@ class TransDiffuserDiT(nn.Module):
         return cfg_out
 
 
-# ========================================
+
 # FACTORY FUNCTIONS
-# ========================================
+
 
 def create_transdiffuser_dit_small(**kwargs):
     """Small model for testing"""
@@ -1528,9 +1547,9 @@ def create_transdiffuser_dit_large(**kwargs):
     )
 
 
-# ========================================
+
 # EXAMPLE USAGE
-# ========================================
+
 
 if __name__ == "__main__":
     # Create model

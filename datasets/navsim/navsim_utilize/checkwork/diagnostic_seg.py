@@ -140,7 +140,7 @@ try:
         
         output = model(camera, lidar)
         
-        print(f"  ✓ Forward pass successful")
+        print(f"    Forward pass successful")
         print(f"    Camera input: {camera.shape}")
         print(f"    LiDAR input: {lidar.shape}")
         print(f"    Output shape: {output.shape}")
@@ -152,10 +152,10 @@ try:
         if output.abs().sum() < 1e-6:
             print(f"    ⚠ WARNING: Output is all zeros! Model not learning.")
         else:
-            print(f"    ✓ Output has non-zero values")
+            print(f"      Output has non-zero values")
             
 except Exception as e:
-    print(f"  ✗ Forward pass failed: {e}")
+    print(f"    Forward pass failed: {e}")
 
 # Check 5: Data loading issues
 print("\n5. DATA LOADING DIAGNOSTICS")
@@ -165,7 +165,7 @@ try:
     from navsim.common.dataloader import SceneLoader
     from navsim.common.dataclasses import SceneFilter, SensorConfig
     
-    print("  ✓ NAVSIM libraries imported successfully")
+    print("    NAVSIM libraries imported successfully")
     
     logs_path = data_root / 'mini_navsim_logs' / 'mini'
     sensor_path = data_root / 'mini_sensor_blobs' / 'mini'
@@ -189,8 +189,8 @@ try:
             sensor_config=sensor_config
         )
         
-        print(f"  ✓ SceneLoader initialized")
-        print(f"  ✓ Total scenes: {len(loader.tokens)}")
+        print(f"    SceneLoader initialized")
+        print(f"    Total scenes: {len(loader.tokens)}")
         
         if len(loader.tokens) > 0:
             # Try loading first scene
@@ -218,9 +218,9 @@ try:
         print(f"    Sensor: {sensor_path.exists()}")
 
 except ImportError as e:
-    print(f"  ✗ Cannot import NAVSIM: {e}")
+    print(f"    Cannot import NAVSIM: {e}")
 except Exception as e:
-    print(f"  ✗ Error loading data: {e}")
+    print(f"    Error loading data: {e}")
 
 # Check 6: Common issues
 print("\n6. COMMON ISSUES & FIXES")
@@ -229,29 +229,29 @@ print("""
 Issue: Semantic coverage all 0.0
 Possible causes:
 
-1. ✗ BEVFusion checkpoint not loaded properly
+1.   BEVFusion checkpoint not loaded properly
    → Fallback model being used
    → Fallback model hasn't learned anything
    FIX: Train fallback model or provide real checkpoint
 
-2. ✗ Camera image preprocessing issues
+2.   Camera image preprocessing issues
    → Wrong normalization
    → Wrong tensor shape
    → Image too dark/bright
    FIX: Verify normalization matches training
 
-3. ✗ LiDAR rasterization broken
+3.   LiDAR rasterization broken
    → No points in grid
    → Wrong coordinate system
    → Points filtered out
    FIX: Check rasterization bounds
 
-4. ✗ Model output layer mismatch
+4.   Model output layer mismatch
    → Sigmoid squashing all outputs to near 0
    → Batch normalization issues
    FIX: Check model architecture
 
-5. ✗ No training signal
+5.   No training signal
    → Using untrained model
    → Using model trained on different dataset
    FIX: Use pre-trained BEVFusion weights

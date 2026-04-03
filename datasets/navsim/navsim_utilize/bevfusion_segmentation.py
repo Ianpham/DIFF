@@ -41,9 +41,9 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 
-# =============================================================================
+
 # Configuration
-# =============================================================================
+
 
 class Config:
     """Configuration for UniAD BEV encoding."""
@@ -84,9 +84,9 @@ class Config:
     CAMERA_NAMES = ['cam_f0']  # Front camera
 
 
-# =============================================================================
+
 # Checkpoint Loading Utility
-# =============================================================================
+
 
 def load_checkpoint_weights(model, checkpoint_path, strict=False):
     """
@@ -101,7 +101,7 @@ def load_checkpoint_weights(model, checkpoint_path, strict=False):
         Number of successfully loaded parameters
     """
     if not checkpoint_path.exists():
-        print(f"⚠ Checkpoint not found: {checkpoint_path}")
+        print(f"  Checkpoint not found: {checkpoint_path}")
         print(f"  Download from: https://huggingface.co/OpenDriveLab/UniAD2.0_R101_nuScenes/tree/main/ckpts")
         return 0
     
@@ -142,20 +142,20 @@ def load_checkpoint_weights(model, checkpoint_path, strict=False):
     
     if adapted_dict:
         model.load_state_dict(adapted_dict, strict=strict)
-        print(f"✓ Loaded {len(adapted_dict)}/{len(model_dict)} parameters")
+        print(f"  Loaded {len(adapted_dict)}/{len(model_dict)} parameters")
         if skipped and len(skipped) < 20:
             print(f"  Skipped {len(skipped)} parameters:")
             for s in skipped[:5]:
                 print(f"    - {s}")
         return len(adapted_dict)
     else:
-        print(f"⚠ No matching parameters found in checkpoint")
+        print(f"  No matching parameters found in checkpoint")
         return 0
 
 
-# =============================================================================
+
 # UniAD-Style BEV Encoder
-# =============================================================================
+
 
 class PositionalEncoding2D(nn.Module):
     """2D positional encoding for BEV features."""
@@ -281,7 +281,7 @@ class SimplifiedBEVFormer(nn.Module):
         self.norm2 = nn.LayerNorm(bev_c)
         self.norm3 = nn.LayerNorm(bev_c)
         
-        print(f"✓ BEVFormer initialized (BEV: {bev_h}x{bev_w}, channels: {bev_c})")
+        print(f"  BEVFormer initialized (BEV: {bev_h}x{bev_w}, channels: {bev_c})")
     
     def forward(self, images):
         """
@@ -382,9 +382,9 @@ class UniADEncoder(nn.Module):
         if load_pretrained and config.USE_PRETRAINED and config.CHECKPOINT_PATH:
             num_loaded = load_checkpoint_weights(self, config.CHECKPOINT_PATH)
             if num_loaded > 0:
-                print(f"✓ Loaded pretrained UniAD weights from {config.CHECKPOINT_PATH.name}")
+                print(f"  Loaded pretrained UniAD weights from {config.CHECKPOINT_PATH.name}")
             else:
-                print(f"⚠ Using random initialization (no pretrained weights loaded)")
+                print(f"  Using random initialization (no pretrained weights loaded)")
         else:
             print("Using random initialization (no checkpoint specified)")
     
@@ -409,9 +409,9 @@ class UniADEncoder(nn.Module):
         return bev_features
 
 
-# =============================================================================
+
 # NAVSIM Data Loading (Same as before)
-# =============================================================================
+
 
 class NavsimDataHandler:
     """Handle NAVSIM data loading."""
@@ -456,7 +456,7 @@ class NavsimDataHandler:
         )
         
         self.scene_tokens = self.scene_loader.tokens
-        print(f"✓ Loaded {len(self.scene_tokens)} scenes")
+        print(f"  Loaded {len(self.scene_tokens)} scenes")
     
     def get_scene(self, scene_token):
         """Get scene by token."""
@@ -531,9 +531,9 @@ class DataPreprocessor:
         return torch.from_numpy(np.stack([density, height])).float()
 
 
-# =============================================================================
+
 # BEV Encoding Pipeline
-# =============================================================================
+
 
 class UniADBEVEncoder:
     """UniAD BEV encoding pipeline for NAVSIM."""
@@ -556,7 +556,7 @@ class UniADBEVEncoder:
         
         # Output directory
         config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        print(f"✓ Output directory: {config.OUTPUT_DIR}")
+        print(f"  Output directory: {config.OUTPUT_DIR}")
     
     def encode_scene(self, scene_token, save=True):
         """Generate BEV features for a scene."""
@@ -610,7 +610,7 @@ class UniADBEVEncoder:
         print(f"Found {len(existing)}/{total} cached")
         
         if len(existing) == total:
-            print("✓ All scenes already processed!")
+            print("  All scenes already processed!")
             return
         
         try:
@@ -632,7 +632,7 @@ class UniADBEVEncoder:
                 self.encode_scene(token, save=True)
                 successful += 1
             except Exception as e:
-                print(f"\n⚠ Failed {token}: {e}")
+                print(f"\n  Failed {token}: {e}")
                 torch.save(
                     torch.zeros(self.config.BEV_CHANNELS, *self.config.BEV_SIZE),
                     output_file
@@ -641,13 +641,13 @@ class UniADBEVEncoder:
             if successful % 50 == 0 and torch.cuda.is_available():
                 torch.cuda.empty_cache()
         
-        print(f"\n✓ Completed: {successful}/{total}")
+        print(f"\n  Completed: {successful}/{total}")
         print("="*70)
 
 
-# =============================================================================
+
 # Main
-# =============================================================================
+
 
 def main():
     parser = argparse.ArgumentParser(description='UniAD BEV Encoder for NAVSIM')
@@ -681,13 +681,13 @@ def main():
     if config.USE_PRETRAINED:
         print(f"\nPretrained checkpoint: {config.CHECKPOINT_PATH}")
         if config.CHECKPOINT_PATH and config.CHECKPOINT_PATH.exists():
-            print(f"✓ Checkpoint found ({config.CHECKPOINT_PATH.stat().st_size / 1024**2:.1f} MB)")
+            print(f"  Checkpoint found ({config.CHECKPOINT_PATH.stat().st_size / 1024**2:.1f} MB)")
         else:
-            print(f"⚠ Checkpoint not found!")
+            print(f"  Checkpoint not found!")
             print(f"  Download from: https://huggingface.co/OpenDriveLab/UniAD2.0_R101_nuScenes/tree/main/ckpts")
             print(f"  Save to: {config.CHECKPOINT_PATH}")
     else:
-        print("\n⚠ Using random initialization (no pretrained weights)")
+        print("\n  Using random initialization (no pretrained weights)")
     
     print("="*70)
     
@@ -700,8 +700,8 @@ def main():
     elif args.scene_token:
         print(f"\nProcessing scene: {args.scene_token}")
         bev_features = encoder.encode_scene(args.scene_token, save=True)
-        print(f"✓ Output shape: {bev_features.shape}")
-        print(f"✓ Saved to: {config.OUTPUT_DIR / f'{args.scene_token}_bev.pt'}")
+        print(f"  Output shape: {bev_features.shape}")
+        print(f"  Saved to: {config.OUTPUT_DIR / f'{args.scene_token}_bev.pt'}")
     else:
         print("\nNo action specified. Use --precompute-all or --scene-token")
         print("\nExamples:")

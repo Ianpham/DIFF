@@ -58,7 +58,7 @@ def test_dummy_dataset():
     assert batch['lidar_bev'].shape == (2, 2, 200, 200)  # (B, C, H, W)
     assert batch['agent_states'].shape == (2, 1, 5)       # (B, N, D)
     
-    print("\n✓ Dummy dataset test passed!")
+    print("\n  Dummy dataset test passed!")
 
 if __name__ == "__main__":
     test_dummy_dataset()

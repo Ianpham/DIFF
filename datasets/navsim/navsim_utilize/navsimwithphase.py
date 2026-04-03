@@ -48,12 +48,12 @@ try:
     from navsim_utilize.vectormapfeature import VectorMapExtractor
 except ImportError:
     # Fallback - you'll need to include these classes
-    print("⚠️  Warning: Could not import shared components. Include them in this file.")
+    print("   Warning: Could not import shared components. Include them in this file.")
 
 
-# =============================================================================
+
 # Phase Configuration (from Phase dataset)
-# =============================================================================
+
 
 @dataclass
 class PhaseConfig:
@@ -71,23 +71,23 @@ class ExtractionPhase(Enum):
     PHASE_2_CUSTOM = "phase_2_custom"          # Requires custom training
 
 
-# =============================================================================
-# 🎯 Phase DATASET - Complete Integration
-# =============================================================================
+
+# Phase DATASET - Complete Integration
+
 
 class PhaseNavsimDataset(Dataset):
     """
     Phase NAVSIM dataset combining phase structure with complete features.
     
     Phase 0 (CORE) now includes:
-    ✅ All camera images + LiDAR
-    ✅ 12 BEV semantic labels
-    ✅ NavSimScenario integration
-    ✅ Route & mission goals
-    ✅ GT trajectories with TrajectorySampling
-    ✅ Difficulty metrics
-    ✅ Vector map features
-    ✅ Agent states & history
+      All camera images + LiDAR
+      12 BEV semantic labels
+      NavSimScenario integration
+      Route & mission goals
+      GT trajectories with TrajectorySampling
+      Difficulty metrics
+      Vector map features
+      Agent states & history
     
     Phase 1 (PRETRAINED) - placeholders for:
     - Weather detection
@@ -190,16 +190,16 @@ class PhaseNavsimDataset(Dataset):
                 self.phase_2_cache.mkdir(parents=True, exist_ok=True)
         
         print("=" * 70)
-        print(f"🚀 Phase NAVSIM Dataset - {data_split.upper()}")
+        print(f"  Phase NAVSIM Dataset - {data_split.upper()}")
         print("=" * 70)
-        print(f"Phase 0 (Core):       {'✓ ENABLED' if enable_phase_0 else '✗ DISABLED'}")
-        print(f"  - Labels:           {'✓' if extract_labels else '✗'}")
-        print(f"  - Routes:           {'✓' if extract_route_info else '✗'}")
-        print(f"  - Vector maps:      {'✓' if extract_vector_maps else '✗'}")
-        print(f"Phase 1 (Pretrained): {'✓ ENABLED' if enable_phase_1 else '✗ DISABLED'}")
-        print(f"Phase 2 (Custom):     {'✓ ENABLED' if enable_phase_2 else '✗ DISABLED'}")
+        print(f"Phase 0 (Core):       {'  ENABLED' if enable_phase_0 else '  DISABLED'}")
+        print(f"  - Labels:           {' ' if extract_labels else ' '}")
+        print(f"  - Routes:           {' ' if extract_route_info else ' '}")
+        print(f"  - Vector maps:      {' ' if extract_vector_maps else ' '}")
+        print(f"Phase 1 (Pretrained): {'  ENABLED' if enable_phase_1 else '  DISABLED'}")
+        print(f"Phase 2 (Custom):     {'  ENABLED' if enable_phase_2 else '  DISABLED'}")
         print(f"Difficulty filter:    {difficulty_filter.value if difficulty_filter else 'None'}")
-        print(f"Cache:                {'✓ ENABLED' if use_cache else '✗ DISABLED'}")
+        print(f"Cache:                {'  ENABLED' if use_cache else '  DISABLED'}")
         print("=" * 70)
         
         # Initialize NAVSIM scene loader
@@ -211,7 +211,7 @@ class PhaseNavsimDataset(Dataset):
         # Compute difficulties & filter
         self._compute_and_filter_difficulties()
         
-        print(f"✓ Loaded {len(self)} scenes")
+        print(f"  Loaded {len(self)} scenes")
         print("=" * 70)
     
     def _init_scene_loader(self):
@@ -285,7 +285,7 @@ class PhaseNavsimDataset(Dataset):
         all_tokens = self.scene_loader.tokens
         
         if self.enable_phase_0:
-            print("\n📊 Computing scenario difficulties...")
+            print("\n  Computing scenario difficulties...")
             self.difficulty_scores = {}
             
             for token in all_tokens:
@@ -313,7 +313,7 @@ class PhaseNavsimDataset(Dataset):
                     if self.difficulty_scores[token].difficulty_level == self.difficulty_filter
                 ]
                 self.scene_tokens = filtered_tokens
-                print(f"✓ Filtered to {len(filtered_tokens)} {self.difficulty_filter.value} scenes")
+                print(f"  Filtered to {len(filtered_tokens)} {self.difficulty_filter.value} scenes")
             else:
                 self.scene_tokens = all_tokens
             
@@ -336,7 +336,7 @@ class PhaseNavsimDataset(Dataset):
             levels[diff.difficulty_level] += 1
             scores.append(diff.difficulty_score)
         
-        print("\n📊 Difficulty Distribution:")
+        print("\n  Difficulty Distribution:")
         for level, count in levels.items():
             pct = count / len(self.difficulty_scores) * 100
             print(f"  {level.value:8s}: {count:4d} ({pct:5.1f}%)")
@@ -380,7 +380,7 @@ class PhaseNavsimDataset(Dataset):
         """
         Extract Phase 0 features - ALL AVAILABLE features from EnhancedNavsimDataset.
         
-        ✅ CHANGE FROM ORIGINAL PHASE DATASET:
+          CHANGE FROM ORIGINAL PHASE DATASET:
         - Now includes NavSimScenario, routes, difficulty, vector maps
         - No longer placeholders - all features are extracted
         """
@@ -748,9 +748,9 @@ class PhaseNavsimDataset(Dataset):
         }
 
 
-# =============================================================================
+
 # Collate Function (combines both approaches)
-# =============================================================================
+
 
 def Phase_collate_fn(batch):
     """Collate function for Phase dataset."""
@@ -870,13 +870,13 @@ def _collate_phase_2(batch):
     }
 
 
-# =============================================================================
+
 # Main / Testing
-# =============================================================================
+
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🚀 Phase NAVSIM Dataset Test")
+    print("  Phase NAVSIM Dataset Test")
     print("=" * 70)
     
     dataset = PhaseNavsimDataset(
@@ -891,7 +891,7 @@ if __name__ == "__main__":
         use_cache=False,
     )
     
-    print(f"\n✓ Created dataset: {len(dataset)} scenes")
+    print(f"\n  Created dataset: {len(dataset)} scenes")
     
     # Get sample
     sample = dataset[0]
@@ -907,4 +907,4 @@ if __name__ == "__main__":
         print(f"    Vector map: {sample['phase_0']['vector_map'] is not None}")
         print(f"    Difficulty: {sample['phase_0']['difficulty']}")
     
-    print("\n✓ Test complete!")
+    print("\n  Test complete!")

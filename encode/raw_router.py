@@ -292,7 +292,7 @@ class ParallelCrossAttentionFusion(nn.Module):
         # Step 3: Pool to fixed length (KEY IMPROVEMENT!)
         pooled_list = []
         for name, features in fused_features.items():
-            # [B, T, D] → [B, D, T] for pooling
+            # [B, T, D] -> [B, D, T] for pooling
             features = features.transpose(1, 2)
             pooled = self.pooling(features)  # [B, D, output_tokens]
             pooled = pooled.transpose(1, 2)  # [B, output_tokens, D]
@@ -550,37 +550,37 @@ class ModalityEncoderAdapter(nn.Module):
     """
     
     def __init__(
-            self,
-            modality_embedders: nn.ModuleDict,
-            modality_config: Dict[str, int],
-            hidden_size: int = 768,
-            num_heads: int = 12,
-            use_gating: bool = True,
-            gate_type: str = 'soft',
-            output_token_per_modality: int = 16,
+        self,
+        modality_embedders: nn.ModuleDict,
+        modality_config: Dict[str, int],
+        hidden_size: int = 768,
+        num_heads: int = 12,
+        dropout: float = 0.1,          # ADD THIS
+        parallel: bool = True,          # ADD THIS
+        use_gating: bool = True,
+        gate_type: str = 'soft',
+        output_tokens_per_modality: int = 16,  # FIX: add the 's'
     ):
         super().__init__()
         self.hidden_size = hidden_size
-
-        # core modality encoder
         self.modality_encoder = ModalityEncoder(
             modality_embedders=modality_embedders,
-            modality_config= modality_config,
-            hidden_size= hidden_size,
-            num_heads= num_heads,
-            dropout= 0.1,
-            parallel=True,
+            modality_config=modality_config,
+            hidden_size=hidden_size,
+            num_heads=num_heads,
+            dropout=dropout,             # USE IT
+            parallel=parallel,            # USE IT
             use_gating=use_gating,
             gate_type=gate_type,
-            output_tokens_per_modality=output_token_per_modality
+            output_tokens_per_modality=output_tokens_per_modality
         )
 
         # mapping from adapted_batch keys to modality names
         # customize this based on your dataset
         self.batch_key_mapping = {
-            'lidar_bev' : 'lidar',
-            'camera_bev': 'camera',
-            'bev_labels': 'bev'
+            'lidar': 'lidar',      # match actual adapted_batch keys
+            'bev': 'bev',          # match actual adapted_batch keys  
+            'camera': 'camera',       # if camera images are present
         }
 
     def forward(
@@ -614,22 +614,17 @@ class ModalityEncoderAdapter(nn.Module):
         return scene_features, gate_info
     
 
-    def _extract_scene_modalities(
-            self,
-            adapted_batch: Dict[str, torch.Tensor]
-    )-> Dict[str, torch.Tensor]:
-        """
-        Extract scene modalities from adapted batch.
+    def _extract_scene_modalities(self, adapted_batch):
+        # print(f"adapted_batch keys: {list(adapted_batch.keys())}")
+        # print(f"batch_key_mapping: {self.batch_key_mapping}")
         
-        Maps dataset-specific keys to modality encoder expected format.
-        """
         scene_modalities = {}
-
         for batch_key, modality_name in self.batch_key_mapping.items():
             if batch_key in adapted_batch:
                 scene_modalities[modality_name] = adapted_batch[batch_key]
-
-            return scene_modalities
+        
+        # print(f"Matched scene modalities: {list(scene_modalities.keys())}")
+        return scene_modalities
         
     def get_output_token_count(self) -> int:
         """Fixed output token count from modality encoder."""

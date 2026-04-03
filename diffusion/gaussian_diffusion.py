@@ -95,17 +95,44 @@ def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_time
     return betas
 
 
+# def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
+#     """
+#     Get a pre-defined beta schedule for the given name.
+#     The beta schedule library consists of beta schedules which remain similar
+#     in the limit of num_diffusion_timesteps.
+#     Beta schedules may be added, but should not be removed or changed once
+#     they are committed to maintain backwards compatibility.
+#     """
+#     if schedule_name == "linear":
+#         # Linear schedule from Ho et al, extended to work for any number of
+#         # diffusion steps.
+#         scale = 1000 / num_diffusion_timesteps
+#         return get_beta_schedule(
+#             "linear",
+#             beta_start=scale * 0.0001,
+#             beta_end=scale * 0.02,
+#             num_diffusion_timesteps=num_diffusion_timesteps,
+#         )
+#     elif schedule_name == "squaredcos_cap_v2":
+#         return betas_for_alpha_bar(
+#             num_diffusion_timesteps,
+#             lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2,
+#         )
+#     else:
+#         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
 def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
     """
     Get a pre-defined beta schedule for the given name.
-    The beta schedule library consists of beta schedules which remain similar
-    in the limit of num_diffusion_timesteps.
-    Beta schedules may be added, but should not be removed or changed once
-    they are committed to maintain backwards compatibility.
+
+    Supported schedules:
+      - linear            : Ho et al. 2020 (DDPM)
+      - cosine            : alias for squaredcos_cap_v2 (Nichol & Dhariwal 2021)
+      - squaredcos_cap_v2 : Nichol & Dhariwal 2021 (Improved DDPM)
+      - scaled_linear     : Used in Stable Diffusion / latent diffusion
+      - quadratic         : beta grows quadratically (smoother than linear)
+      - sigmoid           : S-curve beta schedule (Beta Diffusion, 2023)
     """
     if schedule_name == "linear":
-        # Linear schedule from Ho et al, extended to work for any number of
-        # diffusion steps.
         scale = 1000 / num_diffusion_timesteps
         return get_beta_schedule(
             "linear",
@@ -113,14 +140,47 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
             beta_end=scale * 0.02,
             num_diffusion_timesteps=num_diffusion_timesteps,
         )
-    elif schedule_name == "squaredcos_cap_v2":
+
+    elif schedule_name in ("cosine", "squaredcos_cap_v2"):
+        # Nichol & Dhariwal (2021) - "Improved Denoising Diffusion Probabilistic Models"
+        # https://arxiv.org/abs/2102.09672
+        # Prevents signal from decaying too quickly early in the forward process.
         return betas_for_alpha_bar(
             num_diffusion_timesteps,
             lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2,
         )
-    else:
-        raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
 
+    elif schedule_name == "scaled_linear":
+        # Used by Stable Diffusion / latent diffusion models.
+        # Equivalent to linear schedule on sqrt(beta), good for latent spaces.
+        beta_start = 0.0001
+        beta_end   = 0.02
+        betas = np.linspace(beta_start ** 0.5, beta_end ** 0.5,
+                            num_diffusion_timesteps, dtype=np.float64) ** 2
+        return betas
+
+    elif schedule_name == "quadratic":
+        # Beta grows quadratically — smoother ramp than linear.
+        beta_start = 0.0001
+        beta_end   = 0.02
+        betas = np.linspace(beta_start ** 0.5, beta_end ** 0.5,
+                            num_diffusion_timesteps, dtype=np.float64) ** 2
+        return betas
+
+    elif schedule_name == "sigmoid":
+        # S-curve schedule: slow start, fast middle, slow end.
+        # Good for high-resolution images (Beta Diffusion, Zhou et al. 2023).
+        beta_start = 0.0001
+        beta_end   = 0.02
+        betas = np.linspace(-6, 6, num_diffusion_timesteps)
+        betas = (1 / (1 + np.exp(-betas))) * (beta_end - beta_start) + beta_start
+        return betas
+
+    else:
+        raise NotImplementedError(
+            f"unknown beta schedule: {schedule_name}\n"
+            f"Available: linear, cosine, squaredcos_cap_v2, scaled_linear, quadratic, sigmoid"
+        )
 
 def betas_for_alpha_bar(num_diffusion_timesteps, alpha_bar, max_beta=0.999):
     """

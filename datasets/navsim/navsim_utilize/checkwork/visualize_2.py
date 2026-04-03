@@ -26,7 +26,7 @@ print(f"BEV cache exists: {bev_cache_dir.exists()}")
 
 # Find cached semantic BEV files
 if not bev_cache_dir.exists():
-    print("\n✗ BEV cache directory not found!")
+    print("\n  BEV cache directory not found!")
     print("Run the corrected dataset initialization first:")
     print("  from navsim_dataset_phase1_corrected import NavsimDatasetPhase1Corrected")
     print("  dataset = NavsimDatasetPhase1Corrected()")
@@ -36,7 +36,7 @@ semantic_files = list(bev_cache_dir.glob('*_semantic.pt'))
 print(f"\nFound {len(semantic_files)} cached semantic BEV files")
 
 if len(semantic_files) == 0:
-    print("\n✗ No cached semantic BEV files found!")
+    print("\n  No cached semantic BEV files found!")
     print("Run dataset initialization first.")
     exit(1)
 
@@ -46,9 +46,9 @@ print(f"\nLoading semantic: {semantic_file.name}")
 
 try:
     semantic_bev = torch.load(semantic_file)
-    print(f"✓ Semantic BEV loaded: {semantic_bev.shape}")
+    print(f"  Semantic BEV loaded: {semantic_bev.shape}")
 except Exception as e:
-    print(f"✗ Error loading semantic: {e}")
+    print(f"  Error loading semantic: {e}")
     exit(1)
 
 # Now try to load from dataset to get full sample
@@ -66,12 +66,12 @@ try:
         use_cache=True,
         device='cpu'
     )
-    print(f"✓ Dataset initialized with {len(dataset)} scenes")
+    print(f"  Dataset initialized with {len(dataset)} scenes")
     
     # Load first sample
     print(f"\nLoading sample 0...")
     sample = dataset[0]
-    print("✓ Sample loaded")
+    print("  Sample loaded")
     
 except Exception as e:
     print(f"⚠ Could not load full dataset: {e}")
@@ -250,7 +250,7 @@ plt.tight_layout()
 # Save
 output_path = Path('./phase1_quick_visualization.png')
 plt.savefig(output_path, dpi=150, bbox_inches='tight')
-print(f"\n✓ Saved to: {output_path}")
+print(f"\n  Saved to: {output_path}")
 
 # Also show
 try:
@@ -259,13 +259,13 @@ except:
     print("(Display not available, figure saved)")
 
 print("\n" + "="*70)
-print("✓ Visualization complete!")
+print("  Visualization complete!")
 print("="*70)
 print("\nKey observations:")
-print(f"  ✓ Semantic coverage: {semantic_coverage:.1f}% (should be >30%)")
-print(f"  ✓ Drivable area: {(semantic[0]>0).sum()/semantic[0].size*100:.1f}% (main channel)")
-print(f"  ✓ LiDAR density: {(lidar[0]>0).sum()/lidar[0].size*100:.1f}%")
-print(f"  ✓ Velocity range: [{velocity[0].min():.2f}, {velocity[0].max():.2f}] m/s")
+print(f"    Semantic coverage: {semantic_coverage:.1f}% (should be >30%)")
+print(f"    Drivable area: {(semantic[0]>0).sum()/semantic[0].size*100:.1f}% (main channel)")
+print(f"    LiDAR density: {(lidar[0]>0).sum()/lidar[0].size*100:.1f}%")
+print(f"    Velocity range: [{velocity[0].min():.2f}, {velocity[0].max():.2f}] m/s")
 print("\nIf semantic coverage < 10%, there might be a detection issue.")
 print("If all channels are zero, check cache directory.")
 print("="*70)

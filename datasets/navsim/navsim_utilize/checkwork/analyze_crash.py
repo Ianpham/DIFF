@@ -38,12 +38,12 @@ def find_navsim_data():
         
         for indicator in indicators:
             if indicator.exists():
-                print(f"✓ Found: {base_path} (contains {indicator.name})")
+                print(f"  Found: {base_path} (contains {indicator.name})")
                 found_paths.append(base_path)
                 break
     
     if not found_paths:
-        print("\n❌ No NAVSIM data found in common locations")
+        print("\n  No NAVSIM data found in common locations")
         print("\nSearched:")
         for p in search_paths:
             if p.exists():
@@ -61,7 +61,7 @@ def analyze_crash(data_root=None):
         data_root = find_navsim_data()
         if data_root is None:
             print("\n" + "="*80)
-            print("⚠️  MANUAL PATH REQUIRED")
+            print("   MANUAL PATH REQUIRED")
             print("="*80)
             print("\nCouldn't auto-detect NAVSIM data directory.")
             print("\nPlease run with explicit path:")
@@ -89,8 +89,8 @@ def analyze_crash(data_root=None):
     print("-"*80)
     
     if not cache_dir.exists():
-        print(f"❌ Cache directory does not exist: {cache_dir}")
-        print("\n⚠️  FINDING: Preprocessing never started")
+        print(f"  Cache directory does not exist: {cache_dir}")
+        print("\n   FINDING: Preprocessing never started")
         print("\nPossible reasons:")
         print("  1. Script crashed before creating cache directory")
         print("  2. Different data_root was used")
@@ -102,16 +102,16 @@ def analyze_crash(data_root=None):
         
         print("\n📦 Checking for NAVSIM source data:")
         if navsim_logs.exists():
-            print(f"  ✓ Found navsim logs: {navsim_logs}")
+            print(f"    Found navsim logs: {navsim_logs}")
             log_files = list(navsim_logs.glob('*.json'))
             print(f"    Contains {len(log_files)} log files")
         else:
-            print(f"  ❌ Missing navsim logs: {navsim_logs}")
+            print(f"    Missing navsim logs: {navsim_logs}")
         
         if sensor_blobs.exists():
-            print(f"  ✓ Found sensor blobs: {sensor_blobs}")
+            print(f"    Found sensor blobs: {sensor_blobs}")
         else:
-            print(f"  ❌ Missing sensor blobs: {sensor_blobs}")
+            print(f"    Missing sensor blobs: {sensor_blobs}")
         
         print("\n" + "="*80)
         print("LIKELY CAUSE")
@@ -134,11 +134,11 @@ def analyze_crash(data_root=None):
         print("="*80 + "\n")
         return
     
-    print(f"✓ Cache directory exists: {cache_dir}")
+    print(f"  Cache directory exists: {cache_dir}")
     
     if not bev_cache_dir.exists():
-        print(f"❌ BEV cache directory does not exist: {bev_cache_dir}")
-        print("\n⚠️  FINDING: Cache initialized but BEV extraction never started")
+        print(f"  BEV cache directory does not exist: {bev_cache_dir}")
+        print("\n   FINDING: Cache initialized but BEV extraction never started")
         
         print("\n" + "="*80)
         print("LIKELY CAUSE")
@@ -159,18 +159,18 @@ def analyze_crash(data_root=None):
         print("="*80 + "\n")
         return
     
-    print(f"✓ BEV cache directory exists: {bev_cache_dir}")
+    print(f"  BEV cache directory exists: {bev_cache_dir}")
     
     # 2. Analyze BEV features
-    print("\n📊 BEV FEATURE EXTRACTION STATUS")
+    print("\n  BEV FEATURE EXTRACTION STATUS")
     print("-"*80)
     
     cached_files = list(bev_cache_dir.glob('*.pt'))
     num_cached = len(cached_files)
     
     if num_cached == 0:
-        print("❌ No BEV features extracted")
-        print("\n⚠️  FINDING: Crash occurred during first feature extraction")
+        print("  No BEV features extracted")
+        print("\n   FINDING: Crash occurred during first feature extraction")
         
         print("\n" + "="*80)
         print("LIKELY CAUSE")
@@ -192,7 +192,7 @@ def analyze_crash(data_root=None):
         print("="*80 + "\n")
         return
     
-    print(f"✓ Found {num_cached} cached BEV features")
+    print(f"  Found {num_cached} cached BEV features")
     
     # Calculate sizes
     total_size_bytes = sum(f.stat().st_size for f in cached_files)
@@ -223,14 +223,14 @@ def analyze_crash(data_root=None):
             corrupted.append((cache_file.name, str(e)))
     
     if corrupted:
-        print(f"❌ Found {len(corrupted)} corrupted cache files:")
+        print(f"  Found {len(corrupted)} corrupted cache files:")
         for name, error in corrupted[:5]:
             print(f"   - {name}")
             print(f"     Error: {error[:80]}...")
-        print("\n⚠️  FINDING: Files may be corrupted from interrupted writes")
+        print("\n   FINDING: Files may be corrupted from interrupted writes")
         print("\nRecommended: Delete corrupted files or set force_recompute=True")
     else:
-        print(f"✓ All sampled files are valid ({len(valid)}/{sample_size} checked)")
+        print(f"  All sampled files are valid ({len(valid)}/{sample_size} checked)")
     
     # 4. Analyze last modified times
     print("\n⏰ TIMELINE ANALYSIS")
@@ -268,7 +268,7 @@ def analyze_crash(data_root=None):
     error_log_file = cache_dir / 'bevfusion_extraction_errors.log'
     
     if error_log_file.exists():
-        print(f"✓ Error log found: {error_log_file}")
+        print(f"  Error log found: {error_log_file}")
         
         with open(error_log_file, 'r') as f:
             errors = f.readlines()
@@ -339,7 +339,7 @@ def analyze_crash(data_root=None):
             print(f"Currently allocated: {allocated:.2f} GB")
             print(f"Currently reserved:  {reserved:.2f} GB")
         except Exception as e:
-            print(f"⚠️  Could not query GPU info: {e}")
+            print(f"   Could not query GPU info: {e}")
     
     # 8. Final diagnosis
     print("\n" + "="*80)
@@ -386,7 +386,7 @@ def analyze_crash(data_root=None):
     print("\n" + "-"*80)
     print("NEXT STEPS")
     print("-"*80)
-    print("\n✓ Good news: Preprocessing can resume automatically!")
+    print("\n  Good news: Preprocessing can resume automatically!")
     print("\n1. To continue where it left off:")
     print("   python bev_process.py")
     print("\n2. To start fresh (if corruption suspected):")
@@ -410,6 +410,6 @@ if __name__ == "__main__":
     try:
         analyze_crash(data_root)
     except Exception as e:
-        print(f"\n❌ Analyzer error: {e}")
+        print(f"\n  Analyzer error: {e}")
         print("\nPlease provide data root manually:")
         print("  python analyze_crash.py /path/to/navsim/data")

@@ -319,96 +319,96 @@ class DeformableAttention3D(nn.Module):
     #  Forward: CUDA kernel path
     # -------------------------------------------------------------------
 
-    def _forward_cuda(
-        self,
-        query: torch.Tensor,                          # (B, N, C)
-        gaussian_means: torch.Tensor,                  # (B, N, 3)
-        multi_scale_cam_features: List[torch.Tensor],  # L x (B, Nc, C, H_l, W_l)
-        multi_scale_depth_maps: List[torch.Tensor],    # L x (B, Nc, D, H_l, W_l)
-        lidar2img: torch.Tensor,                       # (B, Nc, 4, 4)
-        img_shape: Tuple[int, int],
-    ) -> torch.Tensor:
-        B, N, C = query.shape
-        Nc = lidar2img.shape[1]
-        M = self.num_heads
-        L = self.num_levels
-        NR1, NR2 = self.NR1, self.NR2
-        H_orig, W_orig = img_shape
+    # def _forward_cuda(
+    #     self,
+    #     query: torch.Tensor,                          # (B, N, C)
+    #     gaussian_means: torch.Tensor,                  # (B, N, 3)
+    #     multi_scale_cam_features: List[torch.Tensor],  # L x (B, Nc, C, H_l, W_l)
+    #     multi_scale_depth_maps: List[torch.Tensor],    # L x (B, Nc, D, H_l, W_l)
+    #     lidar2img: torch.Tensor,                       # (B, Nc, 4, 4)
+    #     img_shape: Tuple[int, int],
+    # ) -> torch.Tensor:
+    #     B, N, C = query.shape
+    #     Nc = lidar2img.shape[1]
+    #     M = self.num_heads
+    #     L = self.num_levels
+    #     NR1, NR2 = self.NR1, self.NR2
+    #     H_orig, W_orig = img_shape
 
-        # ===== Stage 1: 3D offsets + projection =====
-        offsets_3d = self.offset_3d(query).reshape(B, N, NR1, 3)
-        ref_3d = gaussian_means.unsqueeze(2) + offsets_3d           # (B, N, NR1, 3)
-        ref_uvd, valid = self._project_to_uvd(ref_3d, lidar2img, H_orig, W_orig)
-        # ref_uvd: (B, Nc, N, NR1, 3) in [0, 1]
-        # valid:   (B, Nc, N, NR1)
+    #     # ===== Stage 1: 3D offsets + projection =====
+    #     offsets_3d = self.offset_3d(query).reshape(B, N, NR1, 3)
+    #     ref_3d = gaussian_means.unsqueeze(2) + offsets_3d           # (B, N, NR1, 3)
+    #     ref_uvd, valid = self._project_to_uvd(ref_3d, lidar2img, H_orig, W_orig)
+    #     # ref_uvd: (B, Nc, N, NR1, 3) in [0, 1]
+    #     # valid:   (B, Nc, N, NR1)
 
-        # ===== Stage 2: u,v,d offsets =====
-        delta_uvd = self.offset_uvd(query).reshape(B, N, M, L, NR1, NR2, 3)
+    #     # ===== Stage 2: u,v,d offsets =====
+    #     delta_uvd = self.offset_uvd(query).reshape(B, N, M, L, NR1, NR2, 3)
 
-        # ===== Attention weights: softmax over L * NR1 * NR2 jointly =====
-        attn_w = self.attn_weights(query).reshape(B, N, M, L * NR1 * NR2)
-        attn_w = attn_w.softmax(dim=-1)
-        attn_w = attn_w.reshape(B, N, M, L, NR1, NR2)
+    #     # ===== Attention weights: softmax over L * NR1 * NR2 jointly =====
+    #     attn_w = self.attn_weights(query).reshape(B, N, M, L * NR1 * NR2)
+    #     attn_w = attn_w.softmax(dim=-1)
+    #     attn_w = attn_w.reshape(B, N, M, L, NR1, NR2)
 
-        # ===== Accumulate across cameras =====
-        # Process each camera view, call DFA3D kernel, then average
-        output = query.new_zeros(B, N, C)
+    #     # ===== Accumulate across cameras =====
+    #     # Process each camera view, call DFA3D kernel, then average
+    #     output = query.new_zeros(B, N, C)
 
-        for c in range(Nc):
-            # Get validity mask for this camera: (B, N, NR1)
-            v_mask_c = valid[:, c]  # (B, N, NR1)
+    #     for c in range(Nc):
+    #         # Get validity mask for this camera: (B, N, NR1)
+    #         v_mask_c = valid[:, c]  # (B, N, NR1)
 
-            # Base reference: (B, N, NR1, 3) in [0, 1]
-            base_c = ref_uvd[:, c]
+    #         # Base reference: (B, N, NR1, 3) in [0, 1]
+    #         base_c = ref_uvd[:, c]
 
-            # Compute sampling locations:
-            #   base_c:    (B, N, 1, 1, NR1, 1, 3)
-            #   delta_uvd: (B, N, M, L, NR1, NR2, 3)
-            # -> locs:     (B, N, M, L, NR1, NR2, 3)
-            locs = base_c[:, :, None, None, :, None, :] + delta_uvd
-            locs = locs.clamp(0, 1)
+    #         # Compute sampling locations:
+    #         #   base_c:    (B, N, 1, 1, NR1, 1, 3)
+    #         #   delta_uvd: (B, N, M, L, NR1, NR2, 3)
+    #         # -> locs:     (B, N, M, L, NR1, NR2, 3)
+    #         locs = base_c[:, :, None, None, :, None, :] + delta_uvd
+    #         locs = locs.clamp(0, 1)
 
-            # Flatten NR1 * NR2 -> total_points for DFA3D kernel
-            # DFA3D expects: (bs, num_query, M, L, num_points, 3)
-            locs_flat = locs.reshape(B, N, M, L, NR1 * NR2, 3)
+    #         # Flatten NR1 * NR2 -> total_points for DFA3D kernel
+    #         # DFA3D expects: (bs, num_query, M, L, num_points, 3)
+    #         locs_flat = locs.reshape(B, N, M, L, NR1 * NR2, 3)
 
-            # sampling_locations_3D for depth score: (B, N, M, L, num_points, 3)
-            sampling_locs_3D = locs_flat.contiguous()
+    #         # sampling_locations_3D for depth score: (B, N, M, L, num_points, 3)
+    #         sampling_locs_3D = locs_flat.contiguous()
 
-            # sampling_locations_2D: just u,v: (B, N, M, L, num_points, 2)
-            sampling_locs_2D = locs_flat[..., :2].contiguous()
+    #         # sampling_locations_2D: just u,v: (B, N, M, L, num_points, 2)
+    #         sampling_locs_2D = locs_flat[..., :2].contiguous()
 
-            # Attention weights for this cam: (B, N, M, L, NR1*NR2)
-            # Apply validity mask: zero out weights for invalid projections
-            # v_mask_c: (B, N, NR1) -> expand to (B, N, 1, 1, NR1, 1)
-            mask_expanded = v_mask_c[:, :, None, None, :, None].float()
-            mask_expanded = mask_expanded.expand_as(attn_w)
-            aw_masked = attn_w * mask_expanded
-            aw_flat = aw_masked.reshape(B, N, M, L, NR1 * NR2).contiguous()
+    #         # Attention weights for this cam: (B, N, M, L, NR1*NR2)
+    #         # Apply validity mask: zero out weights for invalid projections
+    #         # v_mask_c: (B, N, NR1) -> expand to (B, N, 1, 1, NR1, 1)
+    #         mask_expanded = v_mask_c[:, :, None, None, :, None].float()
+    #         mask_expanded = mask_expanded.expand_as(attn_w)
+    #         aw_masked = attn_w * mask_expanded
+    #         aw_flat = aw_masked.reshape(B, N, M, L, NR1 * NR2).contiguous()
 
-            # Prepare flattened multi-scale features for this camera
-            cam_feats = [f[:, c] for f in multi_scale_cam_features]  # L x (B, C, H_l, W_l)
-            cam_dmaps = [d[:, c] for d in multi_scale_depth_maps]    # L x (B, D, H_l, W_l)
+    #         # Prepare flattened multi-scale features for this camera
+    #         cam_feats = [f[:, c] for f in multi_scale_cam_features]  # L x (B, C, H_l, W_l)
+    #         cam_dmaps = [d[:, c] for d in multi_scale_depth_maps]    # L x (B, D, H_l, W_l)
 
-            prepared = _prepare_dfa3d_inputs(cam_feats, cam_dmaps, M)
+    #         prepared = _prepare_dfa3d_inputs(cam_feats, cam_dmaps, M)
 
-            # ----- Call DFA3D CUDA kernel (one-stage fused) -----
-        # cam_result = MultiScale3DDeformableAttnFunction.apply(
-        #         prepared["value"],               # (B, spatial_size, M, head_dim)
-        #         prepared["value_dpt_dist"],       # (B, spatial_size, M, D)
-        #         prepared["spatial_shapes_3D"],    # (L, 3)
-        #         prepared["level_start_index"],    # (L,)
-        #         sampling_locs_3D,                 # (B, N, M, L, num_points, 3)
-        #         aw_flat,                          # (B, N, M, L, num_points)
-        #         self.im2col_step,
-        # )
-        # print(f"Return type: {type(cam_result)}", flush=True)
-        # print(f"Tuple length: {len(cam_result)}", flush=True)
-        # for i, item in enumerate(cam_result):
-        #     if isinstance(item, torch.Tensor):
-        #         print(f"  [{i}] Tensor shape: {item.shape}, dtype: {item.dtype}", flush=True)
-        #     else:
-        #         print(f"  [{i}] {type(item)}: {item}", flush=True)
+    #         # ----- Call DFA3D CUDA kernel (one-stage fused) -----
+    #     # cam_result = MultiScale3DDeformableAttnFunction.apply(
+    #     #         prepared["value"],               # (B, spatial_size, M, head_dim)
+    #     #         prepared["value_dpt_dist"],       # (B, spatial_size, M, D)
+    #     #         prepared["spatial_shapes_3D"],    # (L, 3)
+    #     #         prepared["level_start_index"],    # (L,)
+    #     #         sampling_locs_3D,                 # (B, N, M, L, num_points, 3)
+    #     #         aw_flat,                          # (B, N, M, L, num_points)
+    #     #         self.im2col_step,
+    #     # )
+    #     # print(f"Return type: {type(cam_result)}", flush=True)
+    #     # print(f"Tuple length: {len(cam_result)}", flush=True)
+    #     # for i, item in enumerate(cam_result):
+    #     #     if isinstance(item, torch.Tensor):
+    #     #         print(f"  [{i}] Tensor shape: {item.shape}, dtype: {item.dtype}", flush=True)
+    #     #     else:
+    #     #         print(f"  [{i}] {type(item)}: {item}", flush=True)
         cam_result = MultiScale3DDeformableAttnFunction.apply(
             prepared["value"],
             prepared["value_dpt_dist"],
@@ -433,6 +433,104 @@ class DeformableAttention3D(nn.Module):
     #  Forward: pure-PyTorch fallback path
     # -------------------------------------------------------------------
 
+    def _forward_cuda(
+            self,
+            query: torch.Tensor,                    # (B, N, C)
+            gaussian_means: torch.Tensor,           # (B, N, 3)
+            multi_scale_cam_features: List[torch.Tensor], # L x (B, Nc, C, H_l, W_l)
+            multi_scale_depth_maps: List[torch.Tensor], # L x (B, Nc, D, H_l, W_l)
+            lidar2img: torch.Tensor, # (B, Nc, 4, 4)
+            img_shape: Tuple[int, int],
+    ) -> torch.Tensor:
+        B, N, C = query.shape
+        Nc = lidar2img.shape[1]
+        M = self.num_heads
+        L = self.num_levels
+        NR1, NR2 = self.NR1, self.NR2
+        H_orig, W_orig = img_shape
+
+        # stage: 3D offsets + projection
+        offsets_3d = self.offset_3d(query).reshape(B, N, NR1, 3)
+        ref_3d = gaussian_means.unsqueeze(2) + offsets_3d
+        ref_uvd, valid = self._project_to_uvd(ref_3d, lidar2img, H_orig, W_orig)
+        # ref_uvd : (B, Nc, N, NR1, 3) in [0, 1]
+        # valid: (B, Nc, N, NR1)
+
+        # stage2: u, v, d offsets
+        delta_uvd = self.offset_uvd(query).reshape(B, N, M, L, NR1, NR2, 3)
+
+        # attention weights: softmax over L * NC1 * NC2 jointly ###############
+        attn_w = self.attn_weights(query).reshape(B, N, M, L * NR1 * NR2)
+        attn_w = attn_w.softmax(dim = -1)
+        attn_w = attn_w.reshape(B, N, M, L, NR1, NR2)
+
+        # accumulate across cameras 
+        output = query.new_zeros(B, N, C)
+
+        for c in range(Nc):
+            # get validity mask
+            v_mask_c = valid[:, c] # B, N, NR1
+
+            # base reference : (B,N, NR1, 3) in [0,1]
+            base_c = ref_uvd[:, c]
+
+            # compute sampling location 
+            #   base_c:    (B, N, 1, 1, NR1, 1, 3)
+            #   delta_uvd: (B, N, M, L, NR1, NR2, 3)
+            # -> locs:     (B, N, M, L, NR1, NR2, 3)
+            locs = base_c[:, :, None, None, :, None, :] + delta_uvd
+            locs = locs.clamp(0,1)
+
+            # flatten NR1 * NR2 -> total points for DFA3D kernel
+            # expecting: (bs, num_query, M, L, num_points, 3)
+            locs_flat = locs.reshape(B, N, M, L, NR1*NR2, 3)
+
+            # sampling_locations_3D for depth score: (B, N, M, L, num_points,3)
+            sampling_locs_3D = locs_flat.contiguous()
+
+            # sampling location 2D: just u, v: (B, N, M, L, num_points, 2)
+            sampling_locs_2D = locs_flat[..., 2].contiguous()
+
+            # Attention weights for this cam: (B, N, M, L, NR1*NR2)
+            # Apply validity mask: zero out weights for invalid projections
+            # v_mask_c: (B, N, NR1) -> expand to (B, N, 1, 1, NR1, 1)
+
+            mask_expanded = v_mask_c[:,:,None, None, :, None].float()
+            mask_expanded = mask_expanded.expand_as(attn_w)
+            aw_masked = attn_w * mask_expanded
+            aw_flat = aw_masked.reshape(B, N, M, L, NR1 * NR2).contiguous()
+
+            # prepare flattened multi-scale for this camera
+            cam_feats = [f[:, c] for f in multi_scale_cam_features] # L x (B, C, H_l, W_l)
+            cam_dmaps = [d[:, c] for d in multi_scale_depth_maps]   # L x (B, D, H_l, W_l)
+
+            prepared = _prepare_dfa3d_inputs(cam_feats, cam_dmaps, M)
+            # Stage A: sample depth scores at 3D locations
+            depth_score = MultiScaleDepthScoreSampleFunction.apply(
+                prepared["value_dpt_dist"],       # (B, spatial_size, M, D)
+                prepared["spatial_shapes_3D"],     # (L, 3)
+                prepared["level_start_index"],     # (L,)
+                sampling_locs_3D,                  # (B, N, M, L, num_points, 3)
+                self.im2col_step,
+            )
+
+            # Stage B: depth-weighted 2D deformable attention
+            cam_output = WeightedMultiScaleDeformableAttnFunction.apply(
+                prepared["value"],                 # (B, spatial_size, M, head_dim)
+                prepared["spatial_shapes"][..., :2].contiguous(),  # (L, 2)
+                prepared["level_start_index"],     # (L,)
+                sampling_locs_2D,                  # (B, N, M, L, num_points, 2)
+                aw_flat,                           # (B, N, M, L, num_points)
+                depth_score,                       # (B, N, M, L, num_points)
+                self.im2col_step,
+            )
+
+            output = output + cam_output
+
+        # Average over cameras
+        output = output / Nc
+        return self.output_proj(self.dropout(output))
+    
     def _forward_pytorch(
         self,
         query: torch.Tensor,

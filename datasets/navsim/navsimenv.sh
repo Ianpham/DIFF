@@ -9,7 +9,7 @@ echo ""
 
 # Check current environment
 if [[ -z "$CONDA_DEFAULT_ENV" ]]; then
-    echo "❌ No conda environment active"
+    echo "  No conda environment active"
     echo "Please run: conda activate l4_env"
     exit 1
 fi
@@ -26,17 +26,17 @@ echo "NAVSIM utilize: $NAVSIM_UTILIZE"
 
 # Check if directories exist
 if [ ! -d "$NAVSIM_ROOT/navsim" ]; then
-    echo "❌ NAVSIM source not found at: $NAVSIM_ROOT/navsim"
+    echo "  NAVSIM source not found at: $NAVSIM_ROOT/navsim"
     exit 1
 fi
 
 if [ ! -d "$NAVSIM_UTILIZE" ]; then
-    echo "❌ navsim_utilize not found at: $NAVSIM_UTILIZE"
+    echo "  navsim_utilize not found at: $NAVSIM_UTILIZE"
     exit 1
 fi
 
-echo "✓ NAVSIM source found"
-echo "✓ navsim_utilize found"
+echo "  NAVSIM source found"
+echo "  navsim_utilize found"
 echo ""
 
 # Method 1: Add to conda environment activation script
@@ -94,7 +94,7 @@ EOF
 
 chmod +x "$DEACTIVATE_SCRIPT"
 
-echo "✓ Created conda activation scripts:"
+echo "  Created conda activation scripts:"
 echo "  Activate:   $ACTIVATE_SCRIPT"
 echo "  Deactivate: $DEACTIVATE_SCRIPT"
 echo ""
@@ -114,7 +114,7 @@ $NAVSIM_ROOT
 $NAVSIM_UTILIZE
 EOF
 
-echo "✓ Created .pth file: $PTH_FILE"
+echo "  Created .pth file: $PTH_FILE"
 echo "  Content:"
 cat "$PTH_FILE" | sed 's/^/    /'
 echo ""
@@ -132,12 +132,12 @@ if [ -f "setup.py" ]; then
     pip install -e . --no-deps 2>&1 | grep -v "Requirement already satisfied" || true
     
     if [ $? -eq 0 ]; then
-        echo "✓ NAVSIM installed in development mode"
+        echo "  NAVSIM installed in development mode"
     else
-        echo "⚠️  Installation had issues, but path methods should still work"
+        echo "   Installation had issues, but path methods should still work"
     fi
 else
-    echo "⚠️  No setup.py found, skipping pip install"
+    echo "   No setup.py found, skipping pip install"
 fi
 
 echo ""
@@ -166,26 +166,26 @@ print()
 # Test NAVSIM import
 try:
     import navsim
-    print("✓ import navsim - SUCCESS")
+    print("  import navsim - SUCCESS")
     print(f"  Location: {navsim.__file__}")
 except ImportError as e:
-    print(f"❌ import navsim - FAILED: {e}")
+    print(f"  import navsim - FAILED: {e}")
     sys.exit(1)
 
 # Test navsim_utilize imports
 try:
     from contract.data_contract import FeatureType, DataContract
-    print("✓ import contract.data_contract - SUCCESS")
+    print("  import contract.data_contract - SUCCESS")
 except ImportError as e:
-    print(f"❌ import contract.data_contract - FAILED: {e}")
+    print(f"  import contract.data_contract - FAILED: {e}")
     print("  Make sure navsim_utilize is in PYTHONPATH")
     sys.exit(1)
 
 try:
     from datasets.base import BaseNavsimDataset
-    print("✓ import datasets.base - SUCCESS")
+    print("  import datasets.base - SUCCESS")
 except ImportError as e:
-    print(f"❌ import datasets.base - FAILED: {e}")
+    print(f"  import datasets.base - FAILED: {e}")
     sys.exit(1)
 
 # Test specific NAVSIM imports
@@ -198,22 +198,22 @@ all_success = True
 for module_name in imports_to_test:
     try:
         __import__(module_name)
-        print(f"✓ import {module_name} - SUCCESS")
+        print(f"  import {module_name} - SUCCESS")
     except ImportError as e:
-        print(f"❌ import {module_name} - FAILED: {e}")
+        print(f"  import {module_name} - FAILED: {e}")
         all_success = False
 
 if all_success:
-    print("\n✓ All imports successful!")
+    print("\n  All imports successful!")
 else:
-    print("\n⚠️  Some imports failed")
+    print("\n   Some imports failed")
     sys.exit(1)
 PYEOF
 
 if [ $? -eq 0 ]; then
     echo ""
     echo "=========================================="
-    echo "✓ Setup Complete!"
+    echo "  Setup Complete!"
     echo "=========================================="
     echo ""
     echo "NAVSIM and navsim_utilize are now accessible in your l4_env environment."
@@ -235,7 +235,7 @@ if [ $? -eq 0 ]; then
 else
     echo ""
     echo "=========================================="
-    echo "❌ Setup verification failed"
+    echo "  Setup verification failed"
     echo "=========================================="
     echo ""
     echo "Troubleshooting:"

@@ -73,7 +73,7 @@
 Compare all three dataset variants.
 """
 
-from datas import NavsimDataset, EnhancedNavsimDataset, PhaseNavsimDataset
+from data import NavsimDataset, EnhancedNavsimDataset, PhaseNavsimDataset
 from adapters import EncoderAdapter
 from datasets.navsim.navsim_utilize.contract import DataContract, ContractBuilder, FeatureType
 
@@ -124,7 +124,7 @@ def compare_all():
         ('Route Info', FeatureType.ROUTE),
     ]
     
-    print("\n📊 Feature Availability:")
+    print("\n  Feature Availability:")
     print(f"{'Feature':<20} {'Basic':<10} {'Enhanced':<12} {'Phase':<10}")
     print("-" * 52)
     
@@ -132,7 +132,7 @@ def compare_all():
         row = f"{feature_name:<20}"
         for dataset in [basic, enhanced, phase]:
             contract = dataset.get_contract()
-            has_it = "✓" if contract.has(feature_type) else "✗"
+            has_it = " " if contract.has(feature_type) else " "
             row += f" {has_it:<10}"
         print(row)
     
@@ -146,8 +146,8 @@ def compare_all():
         ('History Length', lambda c: str(c.history_length)),
         ('Num Cameras', lambda c: str(c.num_cameras)),
         ('BEV Channels', lambda c: str(c.bev_channels)),
-        ('Has Acceleration', lambda c: "✓" if c.has_acceleration else "✗"),
-        ('Multi-Agent', lambda c: "✓" if c.has_nearby_agents else "✗"),
+        ('Has Acceleration', lambda c: " " if c.has_acceleration else " "),
+        ('Multi-Agent', lambda c: " " if c.has_nearby_agents else " "),
         ('Max Batch Size', lambda c: str(c.max_batch_size)),
         ('Memory (MB)', lambda c: f"{c.memory_footprint_mb:.0f}"),
     ]

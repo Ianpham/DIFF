@@ -242,7 +242,9 @@ class GaussianTransDiffuser(nn.Module):
         ms_feats = self.img_backbone(images)
 
         # V2G initialization from LiDAR
-        gaussian_props, gaussian_feats = self.gaussian_lifter(points)
+        points_wrapped = [[p] for p in points]
+        gaussian_props, gaussian_feats = self.gaussian_lifter(points_wrapped)
+        # gaussian_props, gaussian_feats = self.gaussian_lifter(points)
 
         # Depth maps placeholder (in production: project LiDAR to camera depth maps)
         # depth_maps = torch.zeros(

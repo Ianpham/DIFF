@@ -14,11 +14,11 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     print("=" * 70)
-    print("🚀 TransDiffuser Training with Adapter System")
+    print("  TransDiffuser Training with Adapter System")
     print("=" * 70)
     
     # 1. Create dataset
-    print("\n📦 Creating dataset...")
+    print("\n  Creating dataset...")
     if args.dataset == 'basic':
         dataset = NavsimDataset(
             data_split=args.data_split,
@@ -43,12 +43,12 @@ def main(args):
     print(f"✓ Dataset: {len(dataset)} samples")
     
     # 2. Create adapter
-    print("\n🔧 Creating adapter...")
+    print("\n Creating adapter...")
     adapter = EncoderAdapter(dataset, mode=args.mode)
     adapter.print_summary()
     
     # 3. Create model
-    print("\n🤖 Creating TransDiffuser...")
+    print("\n Creating TransDiffuser...")
     model = create_transdiffuser_adapted(
         adapter=adapter,
         hidden_size=args.hidden_size,
@@ -78,7 +78,7 @@ def main(args):
     
     # 6. Training loop
     print("\n" + "=" * 70)
-    print("🎯 STARTING TRAINING")
+    print(" STARTING TRAINING")
     print("=" * 70)
     
     for epoch in range(args.num_epochs):
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='basic', choices=['basic', 'enhanced', 'phase'])
     parser.add_argument('--data_split', type=str, default='mini')
-    parser.add_argument('--mode', type=str, default='auto', choices=['auto', 'minimal', 'efficient', 'full'])
+    parser.add_argument('--mode', type=str, default='efficient', choices=['auto', 'minimal', 'efficient', 'full'])
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--hidden_size', type=int, default=768)
     parser.add_argument('--depth', type=int, default=12)

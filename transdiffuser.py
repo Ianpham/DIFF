@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 # Import from your existing files
 from model.MMRD import MultiModalDecorrelation
-from encode.hierachy_encoder import (
+from encode.raw_router import (
     ModalityEncoder, 
     create_improved_modality_encoder, 
     ModalityGateInfo
@@ -87,10 +87,11 @@ class TransDiffuserIntegrated(nn.Module):
         else:
             self.modality_config = modality_config
         
-        # Import or define your modality embedders here
-        # (LidarEmbedding, BEVEncoder, etc. from document 2)
+        # Import or define modality embedders here
+
         from encode.modality_encoder import (
-            LidarEmbedding, BEVEncoder, ImgCNN,
+            LidarEmbedding, BEVEncoder, 
+            ResNetImageEncoder, MultiCameraEncoder,
             AgentEncoder, HistoryEncoder, 
             TimestepEmbedder, TrajectoryEmbedder,
             FutureTimeEmbedder
@@ -107,7 +108,7 @@ class TransDiffuserIntegrated(nn.Module):
                     channels, hidden_size, patch_size
                 )
             elif modality_name == 'img':
-                self.modality_embedders[modality_name] = ImgCNN(
+                self.modality_embedders[modality_name] = ResNetImageEncoder(
                     channels, hidden_size, patch_size
                 )
         
@@ -1223,15 +1224,15 @@ def create_dataset(
         map_root = "/home/phamtamadas/DPJI/transdiffuser/DDPM/datasets/navsim/download/maps"
         os.environ['NUPLAN_MAPS_ROOT'] = map_root
         
-        print(f"\n✓ Set NUPLAN_MAPS_ROOT to: {map_root}")
-        print(f"✓ Verifying map directory exists...")
+        print(f"\n  Set NUPLAN_MAPS_ROOT to: {map_root}")
+        print(f"  Verifying map directory exists...")
         
         if not Path(map_root).exists():
-            print(f"❌ ERROR: Map directory not found at {map_root}")
+            print(f"  ERROR: Map directory not found at {map_root}")
             print("Please check the path and try again.")
             exit(1)
         
-        print(f"✓ Map directory found!")
+        print(f"  Map directory found!")
         
         # List available maps
         print(f"\n📁 Maps in directory:")

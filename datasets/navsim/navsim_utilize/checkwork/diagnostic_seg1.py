@@ -74,7 +74,7 @@ for idx, file in enumerate(sample_files):
             print(f"   {channel_names[i]:<15} {nz:7d}/{total:7d} {min_val:9.3f} {max_val:9.3f} {mean_val:9.3f}")
             
     except Exception as e:
-        print(f"   ✗ Error: {e}")
+        print(f"     Error: {e}")
 
 # Print summary
 print("\n" + "="*80)
@@ -160,7 +160,7 @@ plt.tight_layout()
 
 output_path = Path('./semantic_bev_diagnostic.png')
 plt.savefig(output_path, dpi=150, bbox_inches='tight')
-print(f"\n✓ Saved to: {output_path}")
+print(f"\n  Saved to: {output_path}")
 
 try:
     plt.show()

@@ -176,6 +176,8 @@ class Trainer:
             data_root=cfg.data_root,
             occ_label_root=cfg.occ_label_root,
             split="train",
+            info_file=getattr(cfg, "info_file", None),        # additional
+            sensor_root=getattr(cfg, "sensor_root", None),    # additional
             point_cloud_range=cfg.point_cloud_range,
             occ_size=cfg.occ_size,
             num_classes=cfg.num_classes,

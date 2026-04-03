@@ -5,6 +5,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import math
 from typing import Optional, Dict, Tuple
 from dataclasses import dataclass
@@ -222,6 +223,7 @@ class MultiCameraEncoder(nn.Module):
     def __init__(
         self, 
         hidden_size=768,
+
         use_pretrained=True,
         freeze_backbone=False,
         camera_names=None
@@ -263,43 +265,91 @@ class MultiCameraEncoder(nn.Module):
         Returns:
             out: (B, T_img, hidden_size) - Fused camera features
         """
-        if not camera_images:
-            # No camera images available
-            B = 1  # Fallback
-            return torch.zeros(B, 1, self.image_encoder.proj.out_channels, 
-                             device=next(self.parameters()).device)
+        # if not camera_images:
+        #     # No camera images available
+        #     B = 1  # Fallback
+        #     return torch.zeros(B, 1, self.image_encoder.proj.out_channels, 
+        #                      device=next(self.parameters()).device)
         
-        # Get batch size from first available camera
+        # # Get batch size from first available camera
+        # B = next(iter(camera_images.values())).shape[0]
+        # device = next(iter(camera_images.values())).device
+        
+        # # Encode each camera view
+        # camera_features = []
+        # for cam_name in self.camera_names:
+        #     if cam_name in camera_images:
+        #         img = camera_images[cam_name]
+        #         features = self.image_encoder(img)  # (B, T, D)
+                
+        #         # Add camera-specific embedding
+        #         cam_emb = self.camera_embeddings[cam_name].expand(B, features.shape[1], -1)
+        #         features = features + cam_emb
+                
+        #         camera_features.append(features)
+        
+        # if not camera_features:
+        #     return torch.zeros(B, 1, self.image_encoder.proj.out_channels, device=device)
+        
+        # # Concatenate all camera features
+        # all_features = torch.cat(camera_features, dim=1)  # (B, T_total, D)
+        
+        # # Self-attention fusion
+        # fused_features, _ = self.fusion_attention(all_features, all_features, all_features)
+        # fused_features = self.fusion_norm(all_features + fused_features)
+        
+        # return fused_features
+
+        # new update after debug
+        # normalize input to dict
+        if isinstance(camera_images, torch.Tensor):
+            # adapter gives [B, num_cams, C, H, W] - split along cam dim
+            B, num_cams, C, H, W = camera_images.shape
+            names = self.camera_names[:num_cams]
+            camera_images = {
+                names[i]: camera_images[:, i] for i in range(num_cams)
+            }
+        
+        # guard: empty dict
+        if not camera_images: # guarantee a dict here
+            device = next(self.parameters()).device
+            return torch.zeros(1, 1, self.image_encoder.hidden_size, device = device)
+        
         B = next(iter(camera_images.values())).shape[0]
         device = next(iter(camera_images.values())).device
-        
-        # Encode each camera view
-        camera_features = []
+
+        # encode each camera view
+        cameara_features = []
         for cam_name in self.camera_names:
             if cam_name in camera_images:
-                img = camera_images[cam_name]
-                features = self.image_encoder(img)  # (B, T, D)
-                
-                # Add camera-specific embedding
+                img = camera_images[cam_name]       # (B, 3, H, W)
+                # reduce camera resolution image before encoding to cut tokens
+                img = F.interpolate(img, size = (112, 224), mode = 'bilinear', align_corners= False)
+                features = self.image_encoder(img)
+
+                # add pool camera tokesn aggressively (mean ppol for fixed count) - will remove if when we have enough memory
+                features = features.mean(dim = 1, keepdim = True) # (B, 1, D) - single token per cam
                 cam_emb = self.camera_embeddings[cam_name].expand(B, features.shape[1], -1)
                 features = features + cam_emb
-                
-                camera_features.append(features)
-        
-        if not camera_features:
-            return torch.zeros(B, 1, self.image_encoder.proj.out_channels, device=device)
-        
-        # Concatenate all camera features
-        all_features = torch.cat(camera_features, dim=1)  # (B, T_total, D)
-        
-        # Self-attention fusion
-        fused_features, _ = self.fusion_attention(all_features, all_features, all_features)
-        fused_features = self.fusion_norm(all_features + fused_features)
-        
-        return fused_features
+                cameara_features.append(features)
 
 
+        if not cameara_features:
+            return torch.zeros(B, 1, self.image_encoder.hidden_size, device =device)
+        
+        # concatenate and fuse
+        all_features = torch.cat(cameara_features, dim = 1) # (B, T_total, D)
+        fused, _ = self.fusion_attention(all_features, all_features, all_features)
+        fused = self.fusion_norm(all_features + fused)
 
+        # enforece to reduce token per cam
+        MAX_TOKENS = 64
+        if fused.shape[1] > MAX_TOKENS:
+            fused = fused.permute(0,2,1)    # (B, D, T)
+            fused = F.adaptive_avg_pool1d(fused, MAX_TOKENS) # (B, D, MAX_TOKENS)
+            fused = fused.permute(0, 2, 1)                  # (B, Max, D)
+
+        return fused
 
 class BEVEncoder(nn.Module):
     """
@@ -390,9 +440,7 @@ class BEVEncoder(nn.Module):
                 channels.append(torch.zeros(B, 1, H, W, device=device))
         
         bev_input = torch.cat(channels, dim=1)  # [B, num_channels, H, W]
-        return bev_input
-
-    
+        return bev_input  
 
 
     def forward(self, labels: Dict[str, torch.Tensor]):
@@ -406,6 +454,8 @@ class BEVEncoder(nn.Module):
         x = self.prepare_bev_input(labels)
         B = x.shape[0]
         
+        # move to same device
+        x = x.to(self.proj.weight.device)
         # project 
         x = self.proj(x)  # (N, hidden_size, H//patch_size, W//patch_size)
         x = x.flatten(2).transpose(1, 2)  # (N, num_patches, hidden_size)
@@ -539,7 +589,9 @@ class BehaviorEncoder(nn.Module):
     Agent behavior encoder (lane keeping, following, changing, etc.).
     Used for Level 2 (Interaction) - tactical behaviors.
     Features: [behavior_class, aggressiveness, lane_offset, speed_relative, ...]
+    here after consideration, those features will be consider as each expert learned by MoE.
     """
+
     def __init__(self, in_channels=6, hidden_size=768):
         super().__init__()
         self.mlp = nn.Sequential(
@@ -552,6 +604,33 @@ class BehaviorEncoder(nn.Module):
         """
         Args:
             x: (N, 6) - Behavior features
+        Returns:
+            out: (N, 1, hidden_size)
+        """
+        x = self.mlp(x).unsqueeze(1)  # (N, 1, hidden_size)
+        return x
+
+
+
+
+class PedestrianEncoder(nn.Module):
+    """
+    Pedestrian-specific features.
+    Used for Level 2/3 - different interaction dynamics than vehicles.
+    Features: [crossing_intention, gaze_direction, group_size, distance_to_crosswalk, ...]
+    """
+    def __init__(self, in_channels=5, hidden_size=768):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(in_channels, hidden_size),
+            nn.SiLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
+        
+    def forward(self, x):
+        """
+        Args:
+            x: (N, 5) - Pedestrian features
         Returns:
             out: (N, 1, hidden_size)
         """
@@ -582,32 +661,6 @@ class IntersectionEncoder(nn.Module):
         """
         x = self.mlp(x).unsqueeze(1)  # (N, 1, hidden_size)
         return x
-
-
-class PedestrianEncoder(nn.Module):
-    """
-    Pedestrian-specific features.
-    Used for Level 2/3 - different interaction dynamics than vehicles.
-    Features: [crossing_intention, gaze_direction, group_size, distance_to_crosswalk, ...]
-    """
-    def __init__(self, in_channels=5, hidden_size=768):
-        super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(in_channels, hidden_size),
-            nn.SiLU(),
-            nn.Linear(hidden_size, hidden_size)
-        )
-        
-    def forward(self, x):
-        """
-        Args:
-            x: (N, 5) - Pedestrian features
-        Returns:
-            out: (N, 1, hidden_size)
-        """
-        x = self.mlp(x).unsqueeze(1)  # (N, 1, hidden_size)
-        return x
-
 
 class GoalIntentEncoder(nn.Module):
     """
@@ -713,7 +766,7 @@ class TrajectoryEmbedder(nn.Module):
             null_traj = self.null_trajectory.view(1, 1, 1, -1).expand(B, N, T, -1)
             trajectory = torch.where(mask, null_traj, trajectory)
         
-        # Reshape for MLP: (B, N, T, 5) → (B*N*T, 5)
+        # Reshape for MLP: (B, N, T, 5) -> (B*N*T, 5)
         trajectory = trajectory.reshape(B * N * T, C)
         emb = self.mlp(trajectory)  # (B*N*T, hidden_size)
         emb = emb.reshape(B, N, T, -1)  # (B, N, T, hidden_size)
@@ -792,7 +845,7 @@ class HistoryEncoder(nn.Module):
         B, N, T, C = x.shape
         device = x.device
         
-        # Reshape: (B, N, 30, 5) → (B*N, 30, 5)
+        # Reshape: (B, N, 30, 5) -> (B*N, 30, 5)
         x = x.reshape(B * N, T, C)
         
         # Add positional encoding
@@ -826,7 +879,7 @@ class FutureTimeEmbedder(nn.Module):
         Returns:
             (B, N, 20, hidden_size) - Broadcast temporal embeddings
         """
-        # (20, D) → (1, 1, 20, D) → (B, N, 20, D)
+        # (20, D) -> (1, 1, 20, D) -> (B, N, 20, D)
         return self.time_embed.unsqueeze(0).unsqueeze(0).expand(
             batch_size, num_agents, -1, -1
         )
@@ -846,8 +899,8 @@ class EncoderOutput:
     - Level 3 (Scene): Map-grounded strategic planning
     
     SEPARATION OF CONCERNS:
-    - Modality encoders → scene context (shared)
-    - Agent encoder → per-agent features (individual)
+    - Modality encoders -> scene context (shared)
+    - Agent encoder -> per-agent features (individual)
     - They meet at Level 3 via cross-attention
     """
     def __init__(self):
@@ -928,11 +981,15 @@ class AgentEncoder(nn.Module):
         self, 
         hidden_size=768, 
         num_heads=12,
+        input_dim = 5, # None is auto detect at first forward
         use_pretrained=False,
         pretrained_path=None
     ):
         super().__init__()
         self.hidden_size = hidden_size
+        self.input_dim = input_dim
+        
+
         
         #  LEVEL 1: TEMPORAL (Current state encoding) 
         self.state_encoder = nn.Sequential(
@@ -997,6 +1054,8 @@ class AgentEncoder(nn.Module):
         
         #  AUXILIARY 
         self.interaction_classifier = nn.Linear(hidden_size, 6)
+
+
         
     def compute_distance_features(self, agent_states):
         """
@@ -1080,10 +1139,17 @@ class AgentEncoder(nn.Module):
         Returns:
             EncoderOutput with level1, level2, level3 populated
         """
-        B, N, _ = agent_states.shape
+        B, N, C = agent_states.shape
         D = self.hidden_size
         device = agent_states.device
+        # Auto-build on first forward if needed
+        if self.state_encoder is None:
+            self._build_state_encoder(C)
+            self.state_encoder = self.state_encoder.to(agent_states.device)
         
+        # Also handle dimension mismatch at runtime
+        if C != self.input_dim:
+            agent_states = agent_states[:, :, :self.input_dim]
         output = EncoderOutput()
         
         #  LEVEL 1: TEMPORAL 

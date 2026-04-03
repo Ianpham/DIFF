@@ -25,7 +25,7 @@ def test_basic_contract():
     assert not contract.has(FeatureType.CAMERA_IMAGES)
     assert contract.agent_state_dim == 5
     
-    print("\n✓ Basic contract test passed!")
+    print("\n  Basic contract test passed!")
 
 def test_contract_with_fallback():
     """Test contract with fallback features."""
@@ -51,7 +51,7 @@ def test_contract_with_fallback():
     spec = contract.get_spec(FeatureType.LIDAR_POINTS)
     assert spec.fallback == FeatureType.LIDAR_BEV
     
-    print("\n✓ Fallback contract test passed!")
+    print("\n  Fallback contract test passed!")
 
 def test_invalid_contract():
     """Test that invalid contracts are caught."""
@@ -71,7 +71,7 @@ def test_invalid_contract():
         )
         assert False, "Should have raised ValueError"
     except ValueError as e:
-        print(f"✓ Correctly caught invalid contract: {e}")
+        print(f"  Correctly caught invalid contract: {e}")
 
 if __name__ == "__main__":
     test_basic_contract()
@@ -79,4 +79,4 @@ if __name__ == "__main__":
     test_contract_with_fallback()
     print("\n" + "=" * 70 + "\n")
     test_invalid_contract()
-    print("\n✓ All contract tests passed!")
+    print("\n  All contract tests passed!")

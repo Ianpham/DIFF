@@ -24,7 +24,7 @@ def investigate_lidar(frame):
     print_section("LIDAR INVESTIGATION")
     
     if frame.lidar is None:
-        print("❌ No LiDAR data available")
+        print("  No LiDAR data available")
         return None
     
     lidar = frame.lidar
@@ -78,7 +78,7 @@ def investigate_cameras(frame):
     print_section("CAMERA INVESTIGATION")
     
     if frame.cameras is None:
-        print("❌ No camera data available")
+        print("  No camera data available")
         return
     
     cameras = frame.cameras
@@ -100,7 +100,7 @@ def investigate_cameras(frame):
             cam = getattr(cameras, cam_name)
             if cam is not None:
                 available_cams.append(cam_name)
-                print(f"✓ {cam_name:8s} ({cam_descriptions.get(cam_name, 'Unknown'):12s})")
+                print(f"  {cam_name:8s} ({cam_descriptions.get(cam_name, 'Unknown'):12s})")
                 
                 # Check attributes
                 if hasattr(cam, 'camera_path'):
@@ -138,7 +138,7 @@ def investigate_annotations(frame):
     print_section("ANNOTATIONS INVESTIGATION (Other Agents)")
     
     if not hasattr(frame, 'annotations') or frame.annotations is None:
-        print("❌ No annotation data available")
+        print("  No annotation data available")
         return None
     
     annot = frame.annotations
@@ -215,7 +215,7 @@ def investigate_map_data(scene, frame):
     print_section("MAP DATA INVESTIGATION")
     
     if not hasattr(scene, 'map_api') or scene.map_api is None:
-        print("❌ No map API available")
+        print("  No map API available")
         return None
     
     map_api = scene.map_api
@@ -258,7 +258,7 @@ def investigate_traffic_lights(frame):
     print_section("TRAFFIC LIGHTS INVESTIGATION")
     
     if not hasattr(frame, 'traffic_lights') or frame.traffic_lights is None:
-        print("❌ No traffic light data available")
+        print("  No traffic light data available")
         return None
     
     tl = frame.traffic_lights
@@ -342,12 +342,12 @@ def create_bev_summary(scene, frame_idx=3):
     }
     
     print("Data Availability for BEV Construction:")
-    print(f"  {'✓' if summary['lidar'] else '✗'} LiDAR Point Cloud")
-    print(f"  {'✓' if summary['cameras'] else '✗'} Camera Images")
-    print(f"  {'✓' if summary['annotations'] else '✗'} Agent Bounding Boxes")
-    print(f"  {'✓' if summary['traffic_lights'] else '✗'} Traffic Light States")
-    print(f"  {'✓' if summary['map_api'] else '✗'} HD Map API")
-    print(f"  {'✓' if summary['roadblocks'] else '✗'} Roadblock Information")
+    print(f"  {' ' if summary['lidar'] else ' '} LiDAR Point Cloud")
+    print(f"  {' ' if summary['cameras'] else ' '} Camera Images")
+    print(f"  {' ' if summary['annotations'] else ' '} Agent Bounding Boxes")
+    print(f"  {' ' if summary['traffic_lights'] else ' '} Traffic Light States")
+    print(f"  {' ' if summary['map_api'] else ' '} HD Map API")
+    print(f"  {' ' if summary['roadblocks'] else ' '} Roadblock Information")
     
     print("\nRecommended BEV Channels:")
     channels = []

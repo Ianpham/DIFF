@@ -731,7 +731,7 @@ def main():
         sensor_config=sensor_config
     )
     
-    print(f"✓ Loaded {len(scene_loader.tokens)} scenes")
+    print(f"  Loaded {len(scene_loader.tokens)} scenes")
     
     # Initialize analyzer
     analyzer = SceneAnalyzer(history_length=4, future_length=8)
@@ -754,7 +754,7 @@ def main():
     with open(output_path, 'w') as f:
         json.dump(all_metadata, f, indent=2)
     
-    print(f"✓ Saved metadata for {len(all_metadata)} scenes")
+    print(f"  Saved metadata for {len(all_metadata)} scenes")
     
     # Print summary
     print("\n" + "=" * 80)
@@ -800,7 +800,7 @@ def main():
         print(f"  {tag:25s}: {count:3d} ({pct:5.1f}%)")
     
     print("\n" + "=" * 80)
-    print("✓ Analysis complete!")
+    print("  Analysis complete!")
     print("=" * 80)
 
 

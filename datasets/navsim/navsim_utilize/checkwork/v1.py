@@ -115,11 +115,11 @@ if overall_coverage < 10:
     stats_text += "⚠ CRITICAL: Total coverage is very low (<10%)!\n"
     stats_text += "  → Dataset might have detection failure\n\n"
 elif overall_coverage > 80:
-    stats_text += "✓ Good: Overall semantic coverage is high (>80%)\n"
+    stats_text += "  Good: Overall semantic coverage is high (>80%)\n"
     stats_text += "  → Heuristic detection is working well\n\n"
 
 if coverage < 1 and data[0].max() > 0:
-    stats_text += "✓ Note: Multiple channels have valid non-zero values\n\n"
+    stats_text += "  Note: Multiple channels have valid non-zero values\n\n"
 
 # Add recommendations
 stats_text += "RECOMMENDATIONS:\n"
@@ -139,7 +139,7 @@ fig.suptitle(f'Phase 1 Semantic BEV Analysis - {sample_file.stem}\nAll 6 Channel
 # Save
 output_path = Path('./semantic_bev_single_image.png')
 plt.savefig(output_path, dpi=150, bbox_inches='tight')
-print(f"\n✓ Saved to: {output_path}")
+print(f"\n  Saved to: {output_path}")
 print(f"  File size: {output_path.stat().st_size / 1024:.1f} KB")
 
 try:

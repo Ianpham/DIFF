@@ -36,7 +36,7 @@ def test_phase_dataset_phase0_only():
     
     print(f"Phase 0 keys: {sample['phase_0'].keys()}")
     
-    print("\n✓ Phase 0 only test passed!")
+    print("\n  Phase 0 only test passed!")
 
 def test_phase_dataset_all_phases():
     """Test Phase dataset with all phases enabled."""
@@ -63,7 +63,7 @@ def test_phase_dataset_all_phases():
     print(f"Phase 1 keys: {sample['phase_1'].keys()}")
     print(f"Phase 2 keys: {sample['phase_2'].keys()}")
     
-    print("\n✓ All phases test passed!")
+    print("\n  All phases test passed!")
 
 def test_phase_dataset_with_adapter():
     """Test adapter with Phase dataset."""
@@ -90,7 +90,7 @@ def test_phase_dataset_with_adapter():
     # Agent should NOT need padding (already 7D)
     assert not adapter.config.encoders['agent'].needs_padding
     
-    print("\n✓ Adapter with Phase dataset test passed!")
+    print("\n  Adapter with Phase dataset test passed!")
 
 def test_curriculum_learning():
     """Test curriculum learning progression."""
@@ -142,7 +142,7 @@ def test_curriculum_learning():
     sample = dataset_stage3[0]
     print(f"  Available phases: {[k for k in sample.keys() if 'phase' in k]}")
     
-    print("\n✓ Curriculum learning test passed!")
+    print("\n  Curriculum learning test passed!")
 
 if __name__ == "__main__":
     print("=" * 70)
@@ -166,5 +166,5 @@ if __name__ == "__main__":
     test_curriculum_learning()
     
     print("\n" + "=" * 70)
-    print("✓ ALL PHASE DATASET TESTS PASSED!")
+    print("  ALL PHASE DATASET TESTS PASSED!")
     print("=" * 70)

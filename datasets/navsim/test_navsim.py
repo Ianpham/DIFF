@@ -128,7 +128,7 @@ class NavsimDataset(Dataset):
         if self.use_cache:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         
-        print(f"✓ Loaded {len(self)} scenes from {split} split")
+        print(f"  Loaded {len(self)} scenes from {split} split")
         print(f"  - History frames: {history_length}")
         print(f"  - Future frames: {future_horizon}")
     
@@ -435,7 +435,7 @@ if __name__ == "__main__":
         max_scenes=100  # Limit for faster testing
     )
     
-    print(f"\n✓ Dataset created: {len(dataset)} scenes")
+    print(f"\n  Dataset created: {len(dataset)} scenes")
     
     # Inspect original NAVSIM data structure
     print("\n[2] Inspecting Original NAVSIM Scene...")
@@ -507,5 +507,5 @@ if __name__ == "__main__":
     print(f"  Last waypoint: {processed['gt_trajectory'][0, -1]}")
     
     print("\n" + "=" * 70)
-    print("✓ ALL TESTS PASSED!")
+    print("  ALL TESTS PASSED!")
     print("=" * 70)
